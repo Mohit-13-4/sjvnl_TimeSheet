@@ -15,7 +15,6 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarHeader,
-  SidebarTrigger,
 } from "@/components/ui/sidebar";
 
 interface TimeTrackerProps {
@@ -29,6 +28,7 @@ const TimeTracker = ({ userRole, onLogout }: TimeTrackerProps) => {
     "web page": { sun: "", mon: "", tue: "", wed: "", thu: "", fri: "", sat: "" }
   });
   const [comment, setComment] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const weekDays = [
     { key: "sun", label: "Sun", date: "Jun 8" },
@@ -113,39 +113,60 @@ const TimeTracker = ({ userRole, onLogout }: TimeTrackerProps) => {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-gray-50">
-        <Sidebar>
-          <SidebarHeader className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-blue-500 rounded flex items-center justify-center">
-                <div className="text-white font-bold text-xs">SJVN</div>
+        {/* Hover trigger area */}
+        <div 
+          className="fixed left-0 top-0 w-4 h-full z-50 bg-transparent"
+          onMouseEnter={() => setSidebarOpen(true)}
+        />
+
+        {/* Sidebar with hover behavior */}
+        <div 
+          className={`fixed left-0 top-0 h-full z-40 transition-transform duration-300 ${
+            sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+          onMouseLeave={() => setSidebarOpen(false)}
+        >
+          <Sidebar className="w-64 h-full">
+            <SidebarHeader className="p-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-blue-500 rounded flex items-center justify-center">
+                  <div className="text-white font-bold text-xs">SJVN</div>
+                </div>
+                <div>
+                  <h2 className="font-semibold text-gray-900">TimeTracker</h2>
+                  <p className="text-xs text-gray-600">{userRole}</p>
+                </div>
               </div>
-              <div>
-                <h2 className="font-semibold text-gray-900">TimeTracker</h2>
-                <p className="text-xs text-gray-600">{userRole}</p>
-              </div>
-            </div>
-          </SidebarHeader>
-          
-          <SidebarContent>
-            <SidebarGroup>
-              <SidebarGroupLabel>Navigation</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {menuItems.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton asChild>
-                        <a href={item.url}>
-                          <item.icon />
-                          <span>{item.title}</span>
-                        </a>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </SidebarContent>
-        </Sidebar>
+            </SidebarHeader>
+            
+            <SidebarContent>
+              <SidebarGroup>
+                <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {menuItems.map((item) => (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton asChild>
+                          <a href={item.url}>
+                            <item.icon />
+                            <span>{item.title}</span>
+                          </a>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            </SidebarContent>
+          </Sidebar>
+        </div>
+
+        {/* Small visible edge when sidebar is hidden */}
+        <div 
+          className={`fixed left-0 top-1/2 transform -translate-y-1/2 w-1 h-20 bg-blue-500 rounded-r-md z-30 transition-opacity duration-300 ${
+            sidebarOpen ? 'opacity-0' : 'opacity-100'
+          }`}
+        />
 
         <main className="flex-1">
           {/* Header */}
@@ -153,7 +174,6 @@ const TimeTracker = ({ userRole, onLogout }: TimeTrackerProps) => {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex justify-between items-center h-16">
                 <div className="flex items-center space-x-4">
-                  <SidebarTrigger />
                   <h1 className="text-xl font-semibold text-gray-900">Timesheet</h1>
                 </div>
                 <div className="flex items-center space-x-4">

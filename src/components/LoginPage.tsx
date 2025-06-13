@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +16,27 @@ const LoginPage = ({ onLogin }: LoginPageProps) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [captcha, setCaptcha] = useState("");
-  const [captchaValue] = useState("118xyJ");
+  const [captchaValue, setCaptchaValue] = useState("");
+
+  const generateCaptcha = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < 6; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setCaptchaValue(result);
+    setCaptcha(""); // Clear the input when captcha changes
+  };
+
+  // Generate initial captcha and set up auto-refresh
+  useEffect(() => {
+    generateCaptcha();
+    
+    // Change captcha every 30 seconds
+    const interval = setInterval(generateCaptcha, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,7 +131,7 @@ const LoginPage = ({ onLogin }: LoginPageProps) => {
                     <div className="bg-gray-100 border rounded px-3 py-2 text-center font-mono text-sm flex-1">
                       {captchaValue}
                     </div>
-                    <Button type="button" variant="outline" size="sm">
+                    <Button type="button" variant="outline" size="sm" onClick={generateCaptcha}>
                       <RefreshCw className="w-4 h-4" />
                     </Button>
                   </div>
