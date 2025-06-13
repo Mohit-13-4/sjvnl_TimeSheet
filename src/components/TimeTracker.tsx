@@ -1,9 +1,14 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { LogOut, Calendar, Clock, Users, FileText, Settings, BarChart3 } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { LogOut, Calendar as CalendarIcon, Clock, Users, FileText, Settings, BarChart3, AlertTriangle } from "lucide-react";
+import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays } from "date-fns";
+import { cn } from "@/lib/utils";
 import {
   Sidebar,
   SidebarContent,
@@ -23,22 +28,28 @@ interface TimeTrackerProps {
 }
 
 const TimeTracker = ({ userRole, onLogout }: TimeTrackerProps) => {
+  const [currentWeek, setCurrentWeek] = useState(new Date());
   const [timeEntries, setTimeEntries] = useState({
     Website: { sun: "", mon: "", tue: "", wed: "", thu: "", fri: "", sat: "" },
-    "web page": { sun: "", mon: "", tue: "", wed: "", thu: "", fri: "", sat: "" }
+    "Web Page": { sun: "", mon: "", tue: "", wed: "", thu: "", fri: "", sat: "" },
+    "Leave/Holiday": { sun: "", mon: "", tue: "", wed: "", thu: "", fri: "", sat: "" }
   });
   const [comment, setComment] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
-  const weekDays = [
-    { key: "sun", label: "Sun", date: "Jun 8" },
-    { key: "mon", label: "Mon", date: "Jun 9" },
-    { key: "tue", label: "Tue", date: "Jun 10" },
-    { key: "wed", label: "Wed", date: "Jun 11" },
-    { key: "thu", label: "Thu", date: "Jun 12" },
-    { key: "fri", label: "Fri", date: "Jun 13" },
-    { key: "sat", label: "Sat", date: "Jun 14" }
-  ];
+  const weekStart = startOfWeek(currentWeek, { weekStartsOn: 0 });
+  const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 0 });
+
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const day = addDays(weekStart, i);
+    return {
+      key: ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][i],
+      label: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][i],
+      date: format(day, "MMM d"),
+      fullDate: day
+    };
+  });
 
   // Menu items for the sidebar
   const menuItems = [
@@ -72,17 +83,59 @@ const TimeTracker = ({ userRole, onLogout }: TimeTrackerProps) => {
   ];
 
   const handleTimeChange = (project: string, day: string, value: string) => {
-    setTimeEntries(prev => ({
-      ...prev,
+    const numValue = parseFloat(value) || 0;
+    const newErrors = { ...validationErrors };
+    
+    // Clear previous errors for this field
+    delete newErrors[`${project}-${day}`];
+    delete newErrors[`day-${day}`];
+    delete newErrors["week"];
+
+    // Validate daily limit (8 hours max per day)
+    if (numValue > 8) {
+      newErrors[`${project}-${day}`] = "Maximum 8 hours per day";
+      setValidationErrors(newErrors);
+      return;
+    }
+
+    const updatedEntries = {
+      ...timeEntries,
       [project]: {
-        ...prev[project as keyof typeof prev],
+        ...timeEntries[project as keyof typeof timeEntries],
         [day]: value
       }
-    }));
+    };
+
+    // Calculate new day total
+    const dayTotal = Object.keys(updatedEntries).reduce((total, proj) => {
+      if (proj === "Leave/Holiday") return total;
+      const hours = parseFloat(updatedEntries[proj as keyof typeof updatedEntries][day as keyof typeof updatedEntries.Website]) || 0;
+      return total + hours;
+    }, 0);
+
+    // Check if Leave/Holiday is selected for this day
+    const isLeaveDay = parseFloat(updatedEntries["Leave/Holiday"][day as keyof typeof updatedEntries.Website]) > 0;
+
+    if (!isLeaveDay && dayTotal > 8) {
+      newErrors[`day-${day}`] = "Total daily hours cannot exceed 8";
+    }
+
+    // Calculate weekly total
+    const weekTotal = calculateWeeklyTotal(updatedEntries);
+    if (weekTotal > 40) {
+      newErrors["week"] = "Total weekly hours cannot exceed 40";
+    }
+
+    setValidationErrors(newErrors);
+    setTimeEntries(updatedEntries);
   };
 
   const calculateDayTotal = (day: string) => {
+    const isLeaveDay = parseFloat(timeEntries["Leave/Holiday"][day as keyof typeof timeEntries.Website]) > 0;
+    if (isLeaveDay) return "Leave";
+    
     return Object.keys(timeEntries).reduce((total, project) => {
+      if (project === "Leave/Holiday") return total;
       const hours = parseFloat(timeEntries[project as keyof typeof timeEntries][day as keyof typeof timeEntries.Website]) || 0;
       return total + hours;
     }, 0).toFixed(2);
@@ -94,21 +147,47 @@ const TimeTracker = ({ userRole, onLogout }: TimeTrackerProps) => {
     }, 0).toFixed(2);
   };
 
-  const calculateGrandTotal = () => {
-    return Object.keys(timeEntries).reduce((total, project) => {
+  const calculateWeeklyTotal = (entries = timeEntries) => {
+    return Object.keys(entries).reduce((total, project) => {
+      if (project === "Leave/Holiday") return total;
       return total + parseFloat(calculateProjectTotal(project));
-    }, 0).toFixed(2);
+    }, 0);
+  };
+
+  const calculateGrandTotal = () => {
+    return calculateWeeklyTotal().toFixed(2);
+  };
+
+  const navigateWeek = (direction: 'prev' | 'next') => {
+    if (direction === 'prev') {
+      setCurrentWeek(subWeeks(currentWeek, 1));
+    } else {
+      setCurrentWeek(addWeeks(currentWeek, 1));
+    }
+  };
+
+  const handleCalendarSelect = (date: Date | undefined) => {
+    if (date) {
+      setCurrentWeek(date);
+    }
   };
 
   const handleSubmit = () => {
-    console.log("Submitting timesheet:", { timeEntries, comment });
+    if (Object.keys(validationErrors).length > 0) {
+      alert("Please fix validation errors before submitting.");
+      return;
+    }
+    console.log("Submitting timesheet:", { timeEntries, comment, week: format(weekStart, "yyyy-MM-dd") });
     alert("Timesheet submitted successfully!");
   };
 
   const handleSave = () => {
-    console.log("Saving timesheet:", { timeEntries, comment });
+    console.log("Saving timesheet:", { timeEntries, comment, week: format(weekStart, "yyyy-MM-dd") });
     alert("Timesheet saved successfully!");
   };
+
+  const weeklyTotal = calculateWeeklyTotal();
+  const isOverWeeklyLimit = weeklyTotal > 40;
 
   return (
     <SidebarProvider>
@@ -192,15 +271,84 @@ const TimeTracker = ({ userRole, onLogout }: TimeTrackerProps) => {
             <Card className="shadow-lg">
               <CardHeader className="bg-blue-50 border-b">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="w-5 h-5 text-blue-600" />
-                    <h2 className="text-lg font-semibold text-gray-900">08/06/2025 - 14/06/2025</h2>
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <CalendarIcon className="w-5 h-5 text-blue-600" />
+                      <h2 className="text-lg font-semibold text-gray-900">
+                        {format(weekStart, "dd/MM/yyyy")} - {format(weekEnd, "dd/MM/yyyy")}
+                      </h2>
+                    </div>
+                    
+                    {/* Week Navigation */}
+                    <div className="flex items-center space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => navigateWeek('prev')}
+                      >
+                        ← Previous
+                      </Button>
+                      
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <CalendarIcon className="w-4 h-4 mr-2" />
+                            Select Week
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={currentWeek}
+                            onSelect={handleCalendarSelect}
+                            initialFocus
+                            className="p-3 pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => navigateWeek('next')}
+                      >
+                        Next →
+                      </Button>
+                    </div>
                   </div>
-                  <div className="text-sm text-gray-600">2025 - 24th</div>
+                  
+                  <div className="flex items-center space-x-4">
+                    <div className="text-sm text-gray-600">
+                      {format(currentWeek, "yyyy")} - Week {format(currentWeek, "w")}
+                    </div>
+                    {isOverWeeklyLimit && (
+                      <div className="flex items-center text-red-600 text-sm">
+                        <AlertTriangle className="w-4 h-4 mr-1" />
+                        Over 40h limit
+                      </div>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
 
               <CardContent className="p-0">
+                {/* Validation Errors */}
+                {Object.keys(validationErrors).length > 0 && (
+                  <div className="bg-red-50 border-l-4 border-red-400 p-4 m-4">
+                    <div className="flex">
+                      <AlertTriangle className="w-5 h-5 text-red-400" />
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-red-800">Validation Errors:</h3>
+                        <div className="mt-2 text-sm text-red-700">
+                          {Object.values(validationErrors).map((error, index) => (
+                            <div key={index}>• {error}</div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Time Entry Table */}
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse">
@@ -219,36 +367,66 @@ const TimeTracker = ({ userRole, onLogout }: TimeTrackerProps) => {
                     <tbody>
                       {Object.keys(timeEntries).map((project, index) => (
                         <tr key={project} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                          <td className="p-4 font-medium text-gray-900 border-r">{project}</td>
-                          {weekDays.map((day) => (
-                            <td key={day.key} className="p-2 border-r">
-                              <Input
-                                type="number"
-                                step="0.5"
-                                min="0"
-                                max="24"
-                                value={timeEntries[project as keyof typeof timeEntries][day.key as keyof typeof timeEntries.Website]}
-                                onChange={(e) => handleTimeChange(project, day.key, e.target.value)}
-                                className="w-full text-center border-gray-300"
-                                placeholder="0.00"
-                              />
-                            </td>
-                          ))}
+                          <td className={`p-4 font-medium border-r ${
+                            project === "Leave/Holiday" ? "text-orange-600" : "text-gray-900"
+                          }`}>
+                            {project}
+                          </td>
+                          {weekDays.map((day) => {
+                            const isLeaveProject = project === "Leave/Holiday";
+                            const isLeaveDay = parseFloat(timeEntries["Leave/Holiday"][day.key as keyof typeof timeEntries.Website]) > 0;
+                            const isDisabled = !isLeaveProject && isLeaveDay;
+                            
+                            return (
+                              <td key={day.key} className="p-2 border-r">
+                                <Input
+                                  type={isLeaveProject ? "checkbox" : "number"}
+                                  step={isLeaveProject ? undefined : "0.5"}
+                                  min={isLeaveProject ? undefined : "0"}
+                                  max={isLeaveProject ? undefined : "8"}
+                                  value={isLeaveProject ? undefined : timeEntries[project as keyof typeof timeEntries][day.key as keyof typeof timeEntries.Website]}
+                                  checked={isLeaveProject ? parseFloat(timeEntries[project as keyof typeof timeEntries][day.key as keyof typeof timeEntries.Website]) > 0 : undefined}
+                                  onChange={(e) => {
+                                    if (isLeaveProject) {
+                                      handleTimeChange(project, day.key, e.target.checked ? "8" : "0");
+                                    } else {
+                                      handleTimeChange(project, day.key, e.target.value);
+                                    }
+                                  }}
+                                  disabled={isDisabled}
+                                  className={cn(
+                                    "w-full text-center border-gray-300",
+                                    isLeaveProject && "w-5 h-5 mx-auto",
+                                    isDisabled && "bg-gray-100 cursor-not-allowed",
+                                    validationErrors[`${project}-${day.key}`] && "border-red-500"
+                                  )}
+                                  placeholder={isLeaveProject ? undefined : "0.00"}
+                                />
+                              </td>
+                            );
+                          })}
                           <td className="p-4 text-center font-medium text-gray-900">
-                            {calculateProjectTotal(project)}
+                            {project === "Leave/Holiday" ? 
+                              `${Object.values(timeEntries[project]).filter(v => parseFloat(v as string) > 0).length} days` :
+                              calculateProjectTotal(project)
+                            }
                           </td>
                         </tr>
                       ))}
                       
                       {/* Total Hours Row */}
-                      <tr className="bg-blue-50 border-t-2 border-blue-200">
+                      <tr className={`border-t-2 ${isOverWeeklyLimit ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'}`}>
                         <td className="p-4 font-bold text-gray-900 border-r">TOTAL HOURS</td>
                         {weekDays.map((day) => (
-                          <td key={day.key} className="p-4 text-center font-bold text-gray-900 border-r">
+                          <td key={day.key} className={`p-4 text-center font-bold border-r ${
+                            validationErrors[`day-${day.key}`] ? 'text-red-600' : 'text-gray-900'
+                          }`}>
                             {calculateDayTotal(day.key)}
                           </td>
                         ))}
-                        <td className="p-4 text-center font-bold text-gray-900">
+                        <td className={`p-4 text-center font-bold ${
+                          isOverWeeklyLimit ? 'text-red-600' : 'text-gray-900'
+                        }`}>
                           {calculateGrandTotal()}
                         </td>
                       </tr>
@@ -287,6 +465,7 @@ const TimeTracker = ({ userRole, onLogout }: TimeTrackerProps) => {
                     <Button 
                       onClick={handleSubmit}
                       className="px-6 bg-blue-600 hover:bg-blue-700"
+                      disabled={Object.keys(validationErrors).length > 0}
                     >
                       Submit
                     </Button>
