@@ -29,7 +29,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string): Promise<Profile | null> => {
     try {
       console.log('Fetching profile for user:', userId);
       
@@ -41,13 +41,35 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (error) {
         console.error('Error fetching profile:', error);
+        // If profile doesn't exist, create a default one
+        if (error.code === 'PGRST116') {
+          console.log('Profile not found, creating default profile');
+          const { data: newProfile, error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+              id: userId,
+              employee_id: `EMP${Date.now()}`,
+              full_name: 'User',
+              role: 'employee'
+            })
+            .select()
+            .single();
+          
+          if (insertError) {
+            console.error('Error creating profile:', insertError);
+            return null;
+          }
+          
+          console.log('Created new profile:', newProfile);
+          return newProfile as Profile;
+        }
         return null;
       }
 
       console.log('Profile data fetched:', data);
       return data as Profile;
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      console.error('Error in fetchProfile:', error);
       return null;
     }
   };
@@ -62,7 +84,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     let mounted = true;
 
-    // Get initial session
     const getInitialSession = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
@@ -95,7 +116,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     getInitialSession();
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.id);
@@ -105,13 +125,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setUser(session?.user ?? null);
           
           if (session?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-            // Use setTimeout to prevent potential infinite loops
-            setTimeout(async () => {
-              if (mounted) {
-                const profileData = await fetchProfile(session.user.id);
-                setProfile(profileData);
-              }
-            }, 100);
+            const profileData = await fetchProfile(session.user.id);
+            setProfile(profileData);
           } else if (!session) {
             setProfile(null);
           }
@@ -133,7 +148,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (error) {
         console.error('Error signing out:', error);
       }
-      // Clear state
       setUser(null);
       setSession(null);
       setProfile(null);

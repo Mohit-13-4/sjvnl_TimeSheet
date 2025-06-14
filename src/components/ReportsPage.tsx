@@ -41,10 +41,12 @@ const ReportsPage = () => {
 
   const fetchReportsData = async () => {
     try {
+      console.log('Fetching reports data for profile:', profile);
+      
       // Calculate date ranges
       const now = new Date();
       const startOfWeek = new Date(now);
-      startOfWeek.setDate(now.getDate() - now.getDay() + 1); // Monday
+      startOfWeek.setDate(now.getDate() - now.getDay() + 1);
       
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       
@@ -111,6 +113,21 @@ const ReportsPage = () => {
             </Card>
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-3xl font-bold tracking-tight">Reports</h2>
+        </div>
+        <Card>
+          <CardContent className="flex items-center justify-center py-12">
+            <p className="text-gray-500">Please log in to view reports.</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -217,7 +234,6 @@ const ReportsPage = () => {
               <div className="text-center py-12 text-gray-500">
                 <Calendar className="w-12 h-12 mx-auto mb-4" />
                 <p>Detailed timesheet analysis will be shown here</p>
-                <p className="text-sm mt-2">Including daily breakdowns and project allocations</p>
               </div>
             </CardContent>
           </Card>
@@ -233,7 +249,6 @@ const ReportsPage = () => {
                 <div className="text-center py-12 text-gray-500">
                   <Users className="w-12 h-12 mx-auto mb-4" />
                   <p>Team performance metrics will be displayed here</p>
-                  <p className="text-sm mt-2">Employee productivity and project progress</p>
                 </div>
               </CardContent>
             </Card>
