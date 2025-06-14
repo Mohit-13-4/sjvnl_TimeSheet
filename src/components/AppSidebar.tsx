@@ -20,7 +20,8 @@ import {
   LogOut,
   Settings,
   Users,
-  UserPlus
+  UserPlus,
+  LayoutDashboard
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -42,9 +43,9 @@ const AppSidebar = ({ currentView, onViewChange }: AppSidebarProps) => {
     if (profile?.role === 'admin') {
       return [
         {
-          id: "timesheet",
-          title: "Timesheet",
-          icon: Clock,
+          id: "dashboard",
+          title: "Dashboard",
+          icon: LayoutDashboard,
         },
         {
           id: "admin-dashboard",
@@ -52,19 +53,24 @@ const AppSidebar = ({ currentView, onViewChange }: AppSidebarProps) => {
           icon: UserPlus,
         },
         {
-          id: "projects",
-          title: "My Projects",
-          icon: ClipboardList,
+          id: "timesheet",
+          title: "Timesheet",
+          icon: Clock,
         },
         {
-          id: "reports",
-          title: "Reports",
-          icon: BarChart3,
+          id: "projects",
+          title: "Projects",
+          icon: ClipboardList,
         },
         {
           id: "employees",
           title: "Employee Management",
           icon: Users,
+        },
+        {
+          id: "reports",
+          title: "Reports",
+          icon: BarChart3,
         },
         {
           id: "profile",
@@ -81,6 +87,11 @@ const AppSidebar = ({ currentView, onViewChange }: AppSidebarProps) => {
 
     // Employee menu items
     return [
+      {
+        id: "dashboard",
+        title: "Dashboard",
+        icon: LayoutDashboard,
+      },
       {
         id: "timesheet",
         title: "Timesheet",
@@ -119,7 +130,7 @@ const AppSidebar = ({ currentView, onViewChange }: AppSidebarProps) => {
           <div>
             <h2 className="font-bold text-lg">TimeTracker</h2>
             <p className="text-sm text-gray-500 capitalize">
-              {profile?.role?.replace('_', ' ') || 'Employee'}
+              {profile?.role === 'admin' ? 'Admin Panel' : 'Employee Portal'}
             </p>
           </div>
         </div>
@@ -129,7 +140,7 @@ const AppSidebar = ({ currentView, onViewChange }: AppSidebarProps) => {
         <SidebarGroup>
           <div className="px-3 py-2">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Navigation
+              {profile?.role === 'admin' ? 'Admin Navigation' : 'Employee Navigation'}
             </h3>
           </div>
           <SidebarGroupContent>
@@ -161,7 +172,7 @@ const AppSidebar = ({ currentView, onViewChange }: AppSidebarProps) => {
               Welcome, {profile?.full_name || 'User'}
             </div>
             <div className="text-xs text-gray-500">
-              ID: {profile?.employee_id} | Role: {profile?.role}
+              ID: {profile?.employee_id} | Role: {profile?.role?.toUpperCase()}
             </div>
           </div>
           <Button 

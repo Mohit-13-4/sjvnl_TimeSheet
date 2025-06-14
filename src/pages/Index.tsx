@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth, AuthProvider } from "@/hooks/useAuth";
 import AuthPage from "@/components/AuthPage";
 import ForgotPasswordPage from "@/components/ForgotPasswordPage";
@@ -12,7 +12,16 @@ import TimeTracker from "@/components/TimeTracker";
 const IndexContent = () => {
   const { user, profile, loading } = useAuth();
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [currentView, setCurrentView] = useState("timesheet");
+  const [currentView, setCurrentView] = useState("dashboard");
+
+  // Set initial view based on user role
+  useEffect(() => {
+    if (profile?.role === 'admin') {
+      setCurrentView("dashboard");
+    } else if (profile?.role === 'employee') {
+      setCurrentView("dashboard");
+    }
+  }, [profile?.role]);
 
   if (loading) {
     return (
@@ -32,7 +41,7 @@ const IndexContent = () => {
     }
     return (
       <AuthPage 
-        onAuthSuccess={() => setCurrentView("timesheet")}
+        onAuthSuccess={() => setCurrentView("dashboard")}
       />
     );
   }
@@ -50,24 +59,37 @@ const IndexContent = () => {
       case "projects":
         return (
           <div className="p-6">
-            <h2 className="text-2xl font-bold mb-4">Projects</h2>
-            <p>Project management interface will be implemented here.</p>
+            <h2 className="text-2xl font-bold mb-4">
+              {profile?.role === 'admin' ? 'All Projects' : 'My Projects'}
+            </h2>
+            <p>
+              {profile?.role === 'admin' 
+                ? 'Manage all company projects and assignments.' 
+                : 'View your assigned projects and tasks.'}
+            </p>
           </div>
         );
       case "reports":
         return (
           <div className="p-6">
             <h2 className="text-2xl font-bold mb-4">Reports</h2>
-            <p>Reporting interface will be implemented here.</p>
+            <p>
+              {profile?.role === 'admin' 
+                ? 'View comprehensive reports and analytics for all employees.' 
+                : 'View your time tracking reports and performance metrics.'}
+            </p>
           </div>
         );
       case "employees":
-        return (
-          <div className="p-6">
-            <h2 className="text-2xl font-bold mb-4">Employee Management</h2>
-            <p>Employee management interface will be implemented here.</p>
-          </div>
-        );
+        if (profile?.role === 'admin') {
+          return (
+            <div className="p-6">
+              <h2 className="text-2xl font-bold mb-4">Employee Management</h2>
+              <p>Manage employee accounts, roles, and permissions.</p>
+            </div>
+          );
+        }
+        return <Dashboard onViewChange={setCurrentView} />;
       case "profile":
         return (
           <div className="p-6">
@@ -75,7 +97,7 @@ const IndexContent = () => {
             <div className="space-y-2">
               <p><strong>Name:</strong> {profile?.full_name}</p>
               <p><strong>Employee ID:</strong> {profile?.employee_id}</p>
-              <p><strong>Role:</strong> {profile?.role}</p>
+              <p><strong>Role:</strong> {profile?.role?.toUpperCase()}</p>
             </div>
           </div>
         );
@@ -83,11 +105,15 @@ const IndexContent = () => {
         return (
           <div className="p-6">
             <h2 className="text-2xl font-bold mb-4">Settings</h2>
-            <p>Settings interface will be implemented here.</p>
+            <p>
+              {profile?.role === 'admin' 
+                ? 'Configure system settings and preferences.' 
+                : 'Manage your account settings and preferences.'}
+            </p>
           </div>
         );
       default:
-        return <TimeTracker userRole={profile?.role === 'admin' ? "Admin" : "Employee"} onLogout={() => {}} />;
+        return <Dashboard onViewChange={setCurrentView} />;
     }
   };
 
