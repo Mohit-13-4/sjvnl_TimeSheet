@@ -33,15 +33,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       console.log('Fetching profile for user:', userId);
       
-      // Use a more direct query without RLS issues
+      // Add a small delay to ensure the profile exists
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .maybeSingle();
+        .single();
 
       if (error) {
         console.error('Error fetching profile:', error);
+        // If profile doesn't exist, try to get user metadata to create one
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.user_metadata) {
+          console.log('User metadata found:', user.user_metadata);
+          // Create profile from user metadata if it doesn't exist
+          const { data: newProfile, error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+              id: userId,
+              employee_id: user.user_metadata.employee_id || 'EMP001',
+              full_name: user.user_metadata.full_name || 'User',
+              role: user.user_metadata.role || 'employee'
+            })
+            .select()
+            .single();
+          
+          if (insertError) {
+            console.error('Error creating profile:', insertError);
+            return null;
+          }
+          return newProfile as Profile;
+        }
         return null;
       }
 
@@ -96,13 +120,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
         
-        if (session?.user) {
+        if (session?.user && event === 'SIGNED_IN') {
           // Use setTimeout to avoid potential infinite recursion
           setTimeout(async () => {
             const profileData = await fetchProfile(session.user.id);
             setProfile(profileData);
-          }, 0);
-        } else {
+          }, 100);
+        } else if (!session) {
           setProfile(null);
         }
         

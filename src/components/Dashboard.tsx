@@ -368,11 +368,13 @@ const Dashboard = ({ onViewChange }: DashboardProps) => {
   // Debug information
   console.log('Dashboard rendering - Profile role:', profile?.role);
 
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-bold tracking-tight">
-          {profile?.role === 'admin' ? 'Admin Dashboard' : 'Dashboard'}
+          {isAdmin ? 'Admin Dashboard' : 'Dashboard'}
         </h2>
         <div className="text-sm text-muted-foreground">
           {new Date().toLocaleDateString('en-US', { 
@@ -384,14 +386,7 @@ const Dashboard = ({ onViewChange }: DashboardProps) => {
         </div>
       </div>
 
-      {/* Show role debug info temporarily */}
-      {!profile?.role && (
-        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
-          <strong>Debug:</strong> Profile role is not loaded. Role: {profile?.role || 'undefined'}
-        </div>
-      )}
-
-      {profile?.role === 'admin' ? renderAdminDashboard() : renderEmployeeDashboard()}
+      {isAdmin ? renderAdminDashboard() : renderEmployeeDashboard()}
     </div>
   );
 };

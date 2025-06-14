@@ -145,12 +145,6 @@ const AppSidebar = ({ currentView, onViewChange }: AppSidebarProps) => {
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
               {isAdmin ? 'Admin Navigation' : 'Employee Navigation'}
             </h3>
-            {/* Debug info - remove this later */}
-            {!profile?.role && (
-              <div className="text-xs text-red-500 mt-1">
-                Role not loaded: {profile?.role || 'undefined'}
-              </div>
-            )}
           </div>
           <SidebarGroupContent>
             <SidebarMenu>

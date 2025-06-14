@@ -16,10 +16,13 @@ const IndexContent = () => {
 
   // Set initial view based on user role
   useEffect(() => {
-    if (profile?.role === 'admin') {
-      setCurrentView("dashboard");
-    } else if (profile?.role === 'employee') {
-      setCurrentView("dashboard");
+    if (profile?.role) {
+      console.log('Setting initial view for role:', profile.role);
+      if (profile.role === 'admin' || profile.role === 'super_admin') {
+        setCurrentView("dashboard"); // Admin lands on dashboard
+      } else if (profile.role === 'employee') {
+        setCurrentView("timesheet"); // Employee lands on timesheet
+      }
     }
   }, [profile?.role]);
 
@@ -41,13 +44,15 @@ const IndexContent = () => {
     }
     return (
       <AuthPage 
-        onAuthSuccess={() => setCurrentView("dashboard")}
+        onAuthSuccess={() => {
+          // Initial view will be set by the useEffect above based on role
+        }}
       />
     );
   }
 
   const renderCurrentView = () => {
-    console.log('Rendering view:', currentView, 'Profile role:', profile?.role); // Debug log
+    console.log('Rendering view:', currentView, 'Profile role:', profile?.role);
     
     switch (currentView) {
       case "dashboard":
@@ -55,15 +60,15 @@ const IndexContent = () => {
       case "admin-dashboard":
         return <AdminDashboard />;
       case "timesheet":
-        return <TimeTracker userRole={profile?.role === 'admin' ? "Admin" : "Employee"} onLogout={() => {}} />;
+        return <TimeTracker userRole={profile?.role === 'admin' || profile?.role === 'super_admin' ? "Admin" : "Employee"} onLogout={() => {}} />;
       case "projects":
         return (
           <div className="p-6">
             <h2 className="text-2xl font-bold mb-4">
-              {profile?.role === 'admin' ? 'All Projects' : 'My Projects'}
+              {profile?.role === 'admin' || profile?.role === 'super_admin' ? 'All Projects' : 'My Projects'}
             </h2>
             <p>
-              {profile?.role === 'admin' 
+              {profile?.role === 'admin' || profile?.role === 'super_admin'
                 ? 'Manage all company projects and assignments.' 
                 : 'View your assigned projects and tasks.'}
             </p>
@@ -74,14 +79,14 @@ const IndexContent = () => {
           <div className="p-6">
             <h2 className="text-2xl font-bold mb-4">Reports</h2>
             <p>
-              {profile?.role === 'admin' 
+              {profile?.role === 'admin' || profile?.role === 'super_admin'
                 ? 'View comprehensive reports and analytics for all employees.' 
                 : 'View your time tracking reports and performance metrics.'}
             </p>
           </div>
         );
       case "employees":
-        if (profile?.role === 'admin') {
+        if (profile?.role === 'admin' || profile?.role === 'super_admin') {
           return (
             <div className="p-6">
               <h2 className="text-2xl font-bold mb-4">Employee Management</h2>
@@ -106,7 +111,7 @@ const IndexContent = () => {
           <div className="p-6">
             <h2 className="text-2xl font-bold mb-4">Settings</h2>
             <p>
-              {profile?.role === 'admin' 
+              {profile?.role === 'admin' || profile?.role === 'super_admin'
                 ? 'Configure system settings and preferences.' 
                 : 'Manage your account settings and preferences.'}
             </p>
