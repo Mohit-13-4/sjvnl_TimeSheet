@@ -38,9 +38,10 @@ const AppSidebar = ({ currentView, onViewChange }: AppSidebarProps) => {
   };
 
   const getMenuItems = () => {
-    console.log('Profile role in sidebar:', profile?.role); // Debug log
+    console.log('Sidebar - Profile role:', profile?.role, 'Full profile:', profile);
     
-    if (profile?.role === 'admin') {
+    // Force admin view if role is admin
+    if (profile?.role === 'admin' || profile?.role === 'super_admin') {
       return [
         {
           id: "dashboard",
@@ -59,7 +60,7 @@ const AppSidebar = ({ currentView, onViewChange }: AppSidebarProps) => {
         },
         {
           id: "projects",
-          title: "Projects",
+          title: "All Projects",
           icon: ClipboardList,
         },
         {
@@ -85,7 +86,7 @@ const AppSidebar = ({ currentView, onViewChange }: AppSidebarProps) => {
       ];
     }
 
-    // Employee menu items
+    // Employee menu items (default)
     return [
       {
         id: "dashboard",
@@ -120,6 +121,8 @@ const AppSidebar = ({ currentView, onViewChange }: AppSidebarProps) => {
     ];
   };
 
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
+
   return (
     <Sidebar collapsible="offcanvas">
       <SidebarHeader className="p-4">
@@ -130,7 +133,7 @@ const AppSidebar = ({ currentView, onViewChange }: AppSidebarProps) => {
           <div>
             <h2 className="font-bold text-lg">TimeTracker</h2>
             <p className="text-sm text-gray-500 capitalize">
-              {profile?.role === 'admin' ? 'Admin Panel' : 'Employee Portal'}
+              {isAdmin ? 'Admin Panel' : 'Employee Portal'}
             </p>
           </div>
         </div>
@@ -140,8 +143,14 @@ const AppSidebar = ({ currentView, onViewChange }: AppSidebarProps) => {
         <SidebarGroup>
           <div className="px-3 py-2">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              {profile?.role === 'admin' ? 'Admin Navigation' : 'Employee Navigation'}
+              {isAdmin ? 'Admin Navigation' : 'Employee Navigation'}
             </h3>
+            {/* Debug info - remove this later */}
+            {!profile?.role && (
+              <div className="text-xs text-red-500 mt-1">
+                Role not loaded: {profile?.role || 'undefined'}
+              </div>
+            )}
           </div>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -150,7 +159,7 @@ const AppSidebar = ({ currentView, onViewChange }: AppSidebarProps) => {
                   <SidebarMenuButton
                     isActive={currentView === item.id}
                     onClick={() => {
-                      console.log('Clicking menu item:', item.id); // Debug log
+                      console.log('Clicking menu item:', item.id, 'User role:', profile?.role);
                       onViewChange(item.id);
                     }}
                     className="w-full justify-start"
@@ -172,7 +181,7 @@ const AppSidebar = ({ currentView, onViewChange }: AppSidebarProps) => {
               Welcome, {profile?.full_name || 'User'}
             </div>
             <div className="text-xs text-gray-500">
-              ID: {profile?.employee_id} | Role: {profile?.role?.toUpperCase()}
+              ID: {profile?.employee_id || 'Loading...'} | Role: {(profile?.role || 'Loading...').toUpperCase()}
             </div>
           </div>
           <Button 

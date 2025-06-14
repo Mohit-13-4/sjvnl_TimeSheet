@@ -289,6 +289,14 @@ const Dashboard = ({ onViewChange }: DashboardProps) => {
             <Button 
               className="w-full justify-start" 
               variant="outline"
+              onClick={() => onViewChange('admin-dashboard')}
+            >
+              <Users className="mr-2 h-4 w-4" />
+              Assign Tasks to Employees
+            </Button>
+            <Button 
+              className="w-full justify-start" 
+              variant="outline"
               onClick={() => onViewChange('employees')}
             >
               <Users className="mr-2 h-4 w-4" />
@@ -300,7 +308,7 @@ const Dashboard = ({ onViewChange }: DashboardProps) => {
               onClick={() => onViewChange('projects')}
             >
               <ClipboardList className="mr-2 h-4 w-4" />
-              Create New Project
+              View All Projects
             </Button>
             <Button 
               className="w-full justify-start" 
@@ -357,10 +365,15 @@ const Dashboard = ({ onViewChange }: DashboardProps) => {
     );
   }
 
+  // Debug information
+  console.log('Dashboard rendering - Profile role:', profile?.role);
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+        <h2 className="text-3xl font-bold tracking-tight">
+          {profile?.role === 'admin' ? 'Admin Dashboard' : 'Dashboard'}
+        </h2>
         <div className="text-sm text-muted-foreground">
           {new Date().toLocaleDateString('en-US', { 
             weekday: 'long', 
@@ -371,7 +384,14 @@ const Dashboard = ({ onViewChange }: DashboardProps) => {
         </div>
       </div>
 
-      {profile?.role === 'employee' ? renderEmployeeDashboard() : renderAdminDashboard()}
+      {/* Show role debug info temporarily */}
+      {!profile?.role && (
+        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
+          <strong>Debug:</strong> Profile role is not loaded. Role: {profile?.role || 'undefined'}
+        </div>
+      )}
+
+      {profile?.role === 'admin' ? renderAdminDashboard() : renderEmployeeDashboard()}
     </div>
   );
 };
