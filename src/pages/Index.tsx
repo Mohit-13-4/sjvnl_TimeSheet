@@ -38,6 +38,8 @@ const IndexContent = () => {
   }
 
   const renderCurrentView = () => {
+    console.log('Rendering view:', currentView, 'Profile role:', profile?.role); // Debug log
+    
     switch (currentView) {
       case "dashboard":
         return <Dashboard onViewChange={setCurrentView} />;
@@ -70,7 +72,11 @@ const IndexContent = () => {
         return (
           <div className="p-6">
             <h2 className="text-2xl font-bold mb-4">Profile</h2>
-            <p>Profile management interface will be implemented here.</p>
+            <div className="space-y-2">
+              <p><strong>Name:</strong> {profile?.full_name}</p>
+              <p><strong>Employee ID:</strong> {profile?.employee_id}</p>
+              <p><strong>Role:</strong> {profile?.role}</p>
+            </div>
           </div>
         );
       case "settings":
@@ -84,10 +90,6 @@ const IndexContent = () => {
         return <TimeTracker userRole={profile?.role === 'admin' ? "Admin" : "Employee"} onLogout={() => {}} />;
     }
   };
-
-  // Debug log to help identify the issue
-  console.log('Current user profile:', profile);
-  console.log('Current view:', currentView);
 
   return (
     <SidebarProvider>

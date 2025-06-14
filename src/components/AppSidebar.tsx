@@ -37,7 +37,7 @@ const AppSidebar = ({ currentView, onViewChange }: AppSidebarProps) => {
   };
 
   const getMenuItems = () => {
-    console.log('Profile role:', profile?.role); // Debug log
+    console.log('Profile role in sidebar:', profile?.role); // Debug log
     
     if (profile?.role === 'admin') {
       return [
@@ -60,6 +60,11 @@ const AppSidebar = ({ currentView, onViewChange }: AppSidebarProps) => {
           id: "reports",
           title: "Reports",
           icon: BarChart3,
+        },
+        {
+          id: "employees",
+          title: "Employee Management",
+          icon: Users,
         },
         {
           id: "profile",
