@@ -11,9 +11,23 @@ import WeeklyTimesheet from "@/components/WeeklyTimesheet";
 
 const MainApp = () => {
   const { user, profile, loading } = useAuth();
-  const [currentView, setCurrentView] = useState("dashboard");
+  const [currentView, setCurrentView] = useState("");
 
-  console.log('MainApp render - User:', !!user, 'Profile:', profile, 'Loading:', loading);
+  // Set initial view based on user role - but only after profile is loaded
+  useEffect(() => {
+    if (profile && !currentView) {
+      console.log('Setting initial view for role:', profile.role);
+      // Both admin and employee start with dashboard view
+      setCurrentView('dashboard');
+    }
+  }, [profile, currentView]);
+
+  // Reset view when user changes
+  useEffect(() => {
+    if (!user) {
+      setCurrentView("");
+    }
+  }, [user]);
 
   if (loading) {
     return (
@@ -28,20 +42,7 @@ const MainApp = () => {
 
   // Show login page when no user is authenticated
   if (!user) {
-    console.log('No user, showing AuthPage');
     return <AuthPage />;
-  }
-
-  // Show loading if user exists but profile is still loading
-  if (user && !profile) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-600">Loading profile...</p>
-        </div>
-      </div>
-    );
   }
 
   const renderContent = () => {
@@ -67,6 +68,7 @@ const MainApp = () => {
       case "settings":
         return <div className="p-6">Settings View</div>;
       default:
+        // Default to dashboard for both admin and employee
         return <Dashboard onViewChange={setCurrentView} />;
     }
   };

@@ -40,23 +40,65 @@ const Dashboard = ({ onViewChange }: DashboardProps) => {
   });
   const [loading, setLoading] = useState(true);
 
-  console.log('Dashboard render - Profile:', profile);
-
   const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
 
   useEffect(() => {
     if (profile) {
-      console.log('Fetching dashboard stats for role:', profile.role);
       fetchDashboardStats();
     }
   }, [profile]);
 
   const fetchDashboardStats = async () => {
     try {
-      setLoading(true);
-      console.log('Starting to fetch dashboard stats...');
+      const promises = [];
 
-      // Initialize with default values
+      if (isAdmin) {
+        // Get total employees (for admins only)
+        promises.push(
+          supabase
+            .from('profiles')
+            .select('id', { count: 'exact' })
+            .eq('role', 'employee')
+        );
+      }
+
+      // Get active projects
+      promises.push(
+        supabase
+          .from('projects')
+          .select('id', { count: 'exact' })
+          .eq('status', 'active')
+      );
+
+      // Get pending time entries
+      promises.push(
+        supabase
+          .from('time_entries')
+          .select('id', { count: 'exact' })
+          .eq('status', 'pending')
+      );
+
+      // Get completed projects
+      promises.push(
+        supabase
+          .from('projects')
+          .select('id', { count: 'exact' })
+          .eq('status', 'completed')
+      );
+
+      // Get this week's hours for current user
+      const startOfWeek = getStartOfWeek();
+      promises.push(
+        supabase
+          .from('time_entries')
+          .select('hours')
+          .eq('user_id', profile?.id)
+          .gte('entry_date', startOfWeek.toISOString().split('T')[0])
+      );
+
+      const results = await Promise.all(promises);
+      
+      let statsIndex = 0;
       const newStats: DashboardStats = {
         totalEmployees: 0,
         activeProjects: 0,
@@ -66,54 +108,24 @@ const Dashboard = ({ onViewChange }: DashboardProps) => {
         overdueProjects: 0
       };
 
-      // Get projects count
-      const { data: projectsData, error: projectsError } = await supabase
-        .from('projects')
-        .select('id, status', { count: 'exact' });
-
-      if (projectsError) {
-        console.error('Error fetching projects:', projectsError);
-      } else {
-        console.log('Projects data:', projectsData);
-        newStats.activeProjects = projectsData?.filter(p => p.status === 'active').length || 0;
-        newStats.completedProjects = projectsData?.filter(p => p.status === 'completed').length || 0;
-      }
-
-      // Get time entries count
-      const { data: timeEntriesData, error: timeEntriesError } = await supabase
-        .from('time_entries')
-        .select('id, status, hours, user_id', { count: 'exact' });
-
-      if (timeEntriesError) {
-        console.error('Error fetching time entries:', timeEntriesError);
-      } else {
-        console.log('Time entries data:', timeEntriesData);
-        newStats.pendingTimeEntries = timeEntriesData?.filter(t => t.status === 'pending').length || 0;
-        
-        // Calculate this week's hours for current user - fixed type conversion
-        const userTimeEntries = timeEntriesData?.filter(t => t.user_id === profile?.id) || [];
-        newStats.thisWeekHours = userTimeEntries.reduce((sum, entry) => {
-          const hours = typeof entry.hours === 'number' ? entry.hours : parseFloat(String(entry.hours)) || 0;
-          return sum + hours;
-        }, 0);
-      }
-
-      // Get employees count (for admins only)
       if (isAdmin) {
-        const { data: employeesData, error: employeesError } = await supabase
-          .from('profiles')
-          .select('id', { count: 'exact' })
-          .eq('role', 'employee');
-
-        if (employeesError) {
-          console.error('Error fetching employees:', employeesError);
-        } else {
-          console.log('Employees data:', employeesData);
-          newStats.totalEmployees = employeesData?.length || 0;
-        }
+        newStats.totalEmployees = results[statsIndex]?.count || 0;
+        statsIndex++;
       }
 
-      console.log('Final stats:', newStats);
+      newStats.activeProjects = results[statsIndex]?.count || 0;
+      statsIndex++;
+      
+      newStats.pendingTimeEntries = results[statsIndex]?.count || 0;
+      statsIndex++;
+      
+      newStats.completedProjects = results[statsIndex]?.count || 0;
+      statsIndex++;
+
+      // Calculate this week's hours
+      const timeEntries = results[statsIndex]?.data || [];
+      newStats.thisWeekHours = timeEntries.reduce((sum, entry) => sum + (entry.hours || 0), 0);
+
       setStats(newStats);
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
@@ -122,14 +134,16 @@ const Dashboard = ({ onViewChange }: DashboardProps) => {
     }
   };
 
+  const getStartOfWeek = () => {
+    const now = new Date();
+    const day = now.getDay();
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Monday as start of week
+    return new Date(now.setDate(diff));
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h2 className="text-3xl font-bold tracking-tight">
-            {isAdmin ? 'Admin Dashboard' : 'Employee Dashboard'}
-          </h2>
-        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[...Array(4)].map((_, i) => (
             <Card key={i}>
@@ -145,6 +159,8 @@ const Dashboard = ({ onViewChange }: DashboardProps) => {
       </div>
     );
   }
+
+  console.log('Dashboard rendering - Profile role:', profile?.role, 'isAdmin:', isAdmin);
 
   return (
     <div className="space-y-6">
@@ -211,7 +227,6 @@ const Dashboard = ({ onViewChange }: DashboardProps) => {
             </Card>
           </div>
 
-          {/* Admin Actions */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
@@ -325,7 +340,6 @@ const Dashboard = ({ onViewChange }: DashboardProps) => {
             </Card>
           </div>
 
-          {/* Employee Actions */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
