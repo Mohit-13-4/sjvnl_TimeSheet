@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -22,7 +21,6 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [employeeId, setEmployeeId] = useState("");
-  const [selectedRole, setSelectedRole] = useState<"employee" | "admin">("employee");
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
@@ -87,7 +85,7 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
           data: {
             full_name: fullName,
             employee_id: employeeId,
-            role: selectedRole
+            role: 'employee'
           }
         }
       });
@@ -315,19 +313,6 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
               <TabsContent value="signup">
                 <form onSubmit={handleSignup} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="role-select">Role</Label>
-                    <Select value={selectedRole} onValueChange={(value: "employee" | "admin") => setSelectedRole(value)}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select your role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="employee">Employee</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
                     <Label htmlFor="full-name">Full Name</Label>
                     <Input
                       id="full-name"
@@ -340,13 +325,11 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="employee-id">
-                      {selectedRole === "admin" ? "Admin ID" : "Employee ID"}
-                    </Label>
+                    <Label htmlFor="employee-id">Employee ID</Label>
                     <Input
                       id="employee-id"
                       type="text"
-                      placeholder={`Enter your ${selectedRole === "admin" ? "admin" : "employee"} ID`}
+                      placeholder="Enter your employee ID"
                       value={employeeId}
                       onChange={(e) => setEmployeeId(e.target.value)}
                       required
