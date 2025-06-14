@@ -90,9 +90,12 @@ const Dashboard = ({ onViewChange }: DashboardProps) => {
         console.log('Time entries data:', timeEntriesData);
         newStats.pendingTimeEntries = timeEntriesData?.filter(t => t.status === 'pending').length || 0;
         
-        // Calculate this week's hours for current user
+        // Calculate this week's hours for current user - fixed type conversion
         const userTimeEntries = timeEntriesData?.filter(t => t.user_id === profile?.id) || [];
-        newStats.thisWeekHours = userTimeEntries.reduce((sum, entry) => sum + (parseFloat(entry.hours as string) || 0), 0);
+        newStats.thisWeekHours = userTimeEntries.reduce((sum, entry) => {
+          const hours = typeof entry.hours === 'number' ? entry.hours : parseFloat(String(entry.hours)) || 0;
+          return sum + hours;
+        }, 0);
       }
 
       // Get employees count (for admins only)
