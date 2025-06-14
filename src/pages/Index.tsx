@@ -85,10 +85,6 @@ const IndexContent = () => {
     }
   };
 
-  // Debug log to help identify the issue
-  console.log('Current user profile:', profile);
-  console.log('Current view:', currentView);
-
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">

@@ -37,8 +37,6 @@ const AppSidebar = ({ currentView, onViewChange }: AppSidebarProps) => {
   };
 
   const getMenuItems = () => {
-    console.log('Profile role:', profile?.role); // Debug log
-    
     if (profile?.role === 'admin') {
       return [
         {
@@ -133,10 +131,7 @@ const AppSidebar = ({ currentView, onViewChange }: AppSidebarProps) => {
                 <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton
                     isActive={currentView === item.id}
-                    onClick={() => {
-                      console.log('Clicking menu item:', item.id); // Debug log
-                      onViewChange(item.id);
-                    }}
+                    onClick={() => onViewChange(item.id)}
                     className="w-full justify-start"
                   >
                     <item.icon className="w-4 h-4" />
@@ -156,7 +151,7 @@ const AppSidebar = ({ currentView, onViewChange }: AppSidebarProps) => {
               Welcome, {profile?.full_name || 'User'}
             </div>
             <div className="text-xs text-gray-500">
-              ID: {profile?.employee_id} | Role: {profile?.role}
+              ID: {profile?.employee_id}
             </div>
           </div>
           <Button 
