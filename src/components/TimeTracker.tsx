@@ -114,7 +114,7 @@ const TimeTracker = ({ userRole, onLogout }: TimeTrackerProps) => {
         task_name: newEntry.task_name,
         hours: parseFloat(newEntry.hours),
         entry_date: newEntry.entry_date,
-        project_id: newEntry.project_id || null,
+        project_id: newEntry.project_id === "none" ? null : newEntry.project_id,
         week_start: weekStart,
         is_leave: newEntry.is_leave,
         status: 'pending'
@@ -208,7 +208,7 @@ const TimeTracker = ({ userRole, onLogout }: TimeTrackerProps) => {
                   <SelectValue placeholder="Select project" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No Project</SelectItem>
+                  <SelectItem value="none">No Project</SelectItem>
                   {projects.map((project) => (
                     <SelectItem key={project.id} value={project.id}>
                       {project.name}
