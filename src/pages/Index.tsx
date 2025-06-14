@@ -8,6 +8,11 @@ import Dashboard from "@/components/Dashboard";
 import AdminDashboard from "@/components/AdminDashboard";
 import TimeTracker from "@/components/TimeTracker";
 import WeeklyTimesheet from "@/components/WeeklyTimesheet";
+import ProjectsPage from "@/components/ProjectsPage";
+import ReportsPage from "@/components/ReportsPage";
+import ProfilePage from "@/components/ProfilePage";
+import SettingsPage from "@/components/SettingsPage";
+import EmployeesPage from "@/components/EmployeesPage";
 
 const MainApp = () => {
   const { user, profile, loading } = useAuth();
@@ -58,15 +63,15 @@ const MainApp = () => {
       case "time-tracker":
         return <TimeTracker />;
       case "projects":
-        return <div className="p-6">Projects View</div>;
+        return <ProjectsPage />;
       case "employees":
-        return <div className="p-6">Employee Management View</div>;
+        return <EmployeesPage />;
       case "reports":
-        return <div className="p-6">Reports View</div>;
+        return <ReportsPage />;
       case "profile":
-        return <div className="p-6">Profile View</div>;
+        return <ProfilePage />;
       case "settings":
-        return <div className="p-6">Settings View</div>;
+        return <SettingsPage />;
       default:
         // Default to dashboard for both admin and employee
         return <Dashboard onViewChange={setCurrentView} />;
