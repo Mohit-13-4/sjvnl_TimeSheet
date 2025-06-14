@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -148,7 +147,15 @@ const WeeklyTimesheet = () => {
     const leaveCount = getLeaveCount();
     const baseTarget = 40;
     const hoursPerDay = 8;
-    return Math.max(0, baseTarget - (leaveCount * hoursPerDay));
+    
+    // Only start reducing hours after 2 holidays
+    if (leaveCount <= 2) {
+      return baseTarget;
+    }
+    
+    // Reduce hours for holidays beyond the first 2
+    const excessHolidays = leaveCount - 2;
+    return Math.max(0, baseTarget - (excessHolidays * hoursPerDay));
   };
 
   // Handle save
