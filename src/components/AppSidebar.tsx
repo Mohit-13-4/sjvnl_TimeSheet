@@ -40,8 +40,10 @@ const AppSidebar = ({ currentView, onViewChange }: AppSidebarProps) => {
   const getMenuItems = () => {
     console.log('Sidebar - Profile role:', profile?.role, 'Full profile:', profile);
     
-    // Force admin view if role is admin
-    if (profile?.role === 'admin' || profile?.role === 'super_admin') {
+    // Check if user is admin or super_admin
+    const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
+    
+    if (isAdmin) {
       return [
         {
           id: "dashboard",
@@ -50,7 +52,7 @@ const AppSidebar = ({ currentView, onViewChange }: AppSidebarProps) => {
         },
         {
           id: "admin-dashboard",
-          title: "Task Assignment",
+          title: "Assign Tasks to Employees",
           icon: UserPlus,
         },
         {
