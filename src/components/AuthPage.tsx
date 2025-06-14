@@ -88,8 +88,7 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
             employee_id: signUpData.employeeId,
             full_name: signUpData.fullName,
             role: signUpData.role
-          },
-          emailRedirectTo: `${window.location.origin}/`
+          }
         }
       });
 
@@ -108,19 +107,10 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
           });
         }
       } else if (data.user) {
-        // Check if user needs email confirmation
-        if (!data.session) {
-          toast({
-            title: "Account Created",
-            description: "Account created successfully! Please check your email to confirm your account, or try signing in directly.",
-          });
-        } else {
-          toast({
-            title: "Success",
-            description: "Account created and signed in successfully!",
-          });
-          onAuthSuccess();
-        }
+        toast({
+          title: "Success",
+          description: "Account created successfully! You can now sign in.",
+        });
         // Clear form
         setSignUpData({
           employeeId: "",
@@ -167,13 +157,7 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
       });
 
       if (error) {
-        if (error.message.includes("Email not confirmed")) {
-          toast({
-            title: "Account Not Activated",
-            description: "Your account exists but needs to be activated. Please contact your administrator or try signing up again.",
-            variant: "destructive"
-          });
-        } else if (error.message.includes("Invalid login credentials")) {
+        if (error.message.includes("Invalid login credentials")) {
           toast({
             title: "Sign In Failed",
             description: "Invalid Employee ID or password. Please check your credentials.",
