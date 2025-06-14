@@ -3,13 +3,14 @@ import { useState } from "react";
 import { useAuth, AuthProvider } from "@/hooks/useAuth";
 import AuthPage from "@/components/AuthPage";
 import ForgotPasswordPage from "@/components/ForgotPasswordPage";
+import AdminDashboard from "@/components/AdminDashboard";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import Dashboard from "@/components/Dashboard";
 import TimeTracker from "@/components/TimeTracker";
 
 const IndexContent = () => {
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [currentView, setCurrentView] = useState("timesheet");
 
@@ -40,8 +41,10 @@ const IndexContent = () => {
     switch (currentView) {
       case "dashboard":
         return <Dashboard onViewChange={setCurrentView} />;
+      case "admin-dashboard":
+        return <AdminDashboard />;
       case "timesheet":
-        return <TimeTracker userRole="Employee" onLogout={() => {}} />;
+        return <TimeTracker userRole={profile?.role === 'admin' ? "Admin" : "Employee"} onLogout={() => {}} />;
       case "projects":
         return (
           <div className="p-6">
@@ -78,9 +81,13 @@ const IndexContent = () => {
           </div>
         );
       default:
-        return <TimeTracker userRole="Employee" onLogout={() => {}} />;
+        return <TimeTracker userRole={profile?.role === 'admin' ? "Admin" : "Employee"} onLogout={() => {}} />;
     }
   };
+
+  // Debug log to help identify the issue
+  console.log('Current user profile:', profile);
+  console.log('Current view:', currentView);
 
   return (
     <SidebarProvider>

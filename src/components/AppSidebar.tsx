@@ -18,7 +18,9 @@ import {
   ClipboardList, 
   User,
   LogOut,
-  Settings
+  Settings,
+  Users,
+  UserPlus
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -27,39 +29,79 @@ interface AppSidebarProps {
   onViewChange: (view: string) => void;
 }
 
-const menuItems = [
-  {
-    id: "timesheet",
-    title: "Timesheet",
-    icon: Clock,
-  },
-  {
-    id: "projects",
-    title: "My Projects",
-    icon: ClipboardList,
-  },
-  {
-    id: "reports",
-    title: "Reports",
-    icon: BarChart3,
-  },
-  {
-    id: "profile",
-    title: "Profile",
-    icon: User,
-  },
-  {
-    id: "settings",
-    title: "Settings",
-    icon: Settings,
-  },
-];
-
-export function AppSidebar({ currentView, onViewChange }: AppSidebarProps) {
+const AppSidebar = ({ currentView, onViewChange }: AppSidebarProps) => {
   const { profile, signOut } = useAuth();
 
   const handleSignOut = async () => {
     await signOut();
+  };
+
+  const getMenuItems = () => {
+    console.log('Profile role:', profile?.role); // Debug log
+    
+    if (profile?.role === 'admin') {
+      return [
+        {
+          id: "timesheet",
+          title: "Timesheet",
+          icon: Clock,
+        },
+        {
+          id: "admin-dashboard",
+          title: "Task Assignment",
+          icon: UserPlus,
+        },
+        {
+          id: "projects",
+          title: "My Projects",
+          icon: ClipboardList,
+        },
+        {
+          id: "reports",
+          title: "Reports",
+          icon: BarChart3,
+        },
+        {
+          id: "profile",
+          title: "Profile",
+          icon: User,
+        },
+        {
+          id: "settings",
+          title: "Settings",
+          icon: Settings,
+        },
+      ];
+    }
+
+    // Employee menu items
+    return [
+      {
+        id: "timesheet",
+        title: "Timesheet",
+        icon: Clock,
+      },
+      {
+        id: "projects",
+        title: "My Projects",
+        icon: ClipboardList,
+      },
+      {
+        id: "reports",
+        title: "Reports",
+        icon: BarChart3,
+      },
+      {
+        id: "profile",
+        title: "Profile",
+        icon: User,
+      },
+      {
+        id: "settings",
+        title: "Settings",
+        icon: Settings,
+      },
+    ];
   };
 
   return (
@@ -87,11 +129,14 @@ export function AppSidebar({ currentView, onViewChange }: AppSidebarProps) {
           </div>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
+              {getMenuItems().map((item) => (
                 <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton
                     isActive={currentView === item.id}
-                    onClick={() => onViewChange(item.id)}
+                    onClick={() => {
+                      console.log('Clicking menu item:', item.id); // Debug log
+                      onViewChange(item.id);
+                    }}
                     className="w-full justify-start"
                   >
                     <item.icon className="w-4 h-4" />
@@ -111,7 +156,7 @@ export function AppSidebar({ currentView, onViewChange }: AppSidebarProps) {
               Welcome, {profile?.full_name || 'User'}
             </div>
             <div className="text-xs text-gray-500">
-              ID: {profile?.employee_id}
+              ID: {profile?.employee_id} | Role: {profile?.role}
             </div>
           </div>
           <Button 
@@ -127,4 +172,6 @@ export function AppSidebar({ currentView, onViewChange }: AppSidebarProps) {
       </SidebarFooter>
     </Sidebar>
   );
-}
+};
+
+export { AppSidebar };
