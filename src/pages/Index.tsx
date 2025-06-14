@@ -13,15 +13,12 @@ const MainApp = () => {
   const { user, profile, loading } = useAuth();
   const [currentView, setCurrentView] = useState("");
 
-  // Set initial view based on user role
+  // Set initial view based on user role - but only after profile is loaded
   useEffect(() => {
     if (profile && !currentView) {
       console.log('Setting initial view for role:', profile.role);
-      if (profile.role === 'admin' || profile.role === 'super_admin') {
-        setCurrentView('dashboard');
-      } else {
-        setCurrentView('timesheet');
-      }
+      // Both admin and employee start with dashboard view
+      setCurrentView('dashboard');
     }
   }, [profile, currentView]);
 
@@ -43,6 +40,7 @@ const MainApp = () => {
     );
   }
 
+  // Show login page when no user is authenticated
   if (!user) {
     return <AuthPage />;
   }
@@ -70,12 +68,8 @@ const MainApp = () => {
       case "settings":
         return <div className="p-6">Settings View</div>;
       default:
-        // Default based on role if no view is set
-        if (profile?.role === 'admin' || profile?.role === 'super_admin') {
-          return <Dashboard onViewChange={setCurrentView} />;
-        } else {
-          return <WeeklyTimesheet />;
-        }
+        // Default to dashboard for both admin and employee
+        return <Dashboard onViewChange={setCurrentView} />;
     }
   };
 

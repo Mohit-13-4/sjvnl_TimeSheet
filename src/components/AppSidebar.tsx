@@ -87,7 +87,7 @@ const AppSidebar = ({ currentView, onViewChange }: AppSidebarProps) => {
       ];
     }
 
-    // Employee menu items (default)
+    // Employee menu items (default) - Make sure Dashboard is included
     return [
       {
         id: "dashboard",
