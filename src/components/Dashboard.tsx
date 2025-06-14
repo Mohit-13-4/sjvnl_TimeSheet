@@ -40,16 +40,20 @@ const Dashboard = ({ onViewChange }: DashboardProps) => {
   });
   const [loading, setLoading] = useState(true);
 
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
+
   useEffect(() => {
-    fetchDashboardStats();
-  }, [profile?.role]);
+    if (profile) {
+      fetchDashboardStats();
+    }
+  }, [profile]);
 
   const fetchDashboardStats = async () => {
     try {
       const promises = [];
 
-      // Get total employees (for admins)
-      if (profile?.role === 'admin' || profile?.role === 'super_admin') {
+      if (isAdmin) {
+        // Get total employees (for admins only)
         promises.push(
           supabase
             .from('profiles')
@@ -104,7 +108,7 @@ const Dashboard = ({ onViewChange }: DashboardProps) => {
         overdueProjects: 0
       };
 
-      if (profile?.role === 'admin' || profile?.role === 'super_admin') {
+      if (isAdmin) {
         newStats.totalEmployees = results[statsIndex]?.count || 0;
         statsIndex++;
       }
@@ -137,215 +141,6 @@ const Dashboard = ({ onViewChange }: DashboardProps) => {
     return new Date(now.setDate(diff));
   };
 
-  const renderEmployeeDashboard = () => (
-    <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">My Active Projects</CardTitle>
-            <ClipboardList className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.activeProjects}</div>
-            <p className="text-xs text-muted-foreground">Currently assigned</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">This Week Hours</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.thisWeekHours.toFixed(1)}</div>
-            <p className="text-xs text-muted-foreground">Hours logged</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Entries</CardTitle>
-            <AlertCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.pendingTimeEntries}</div>
-            <p className="text-xs text-muted-foreground">Awaiting approval</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed Projects</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.completedProjects}</div>
-            <p className="text-xs text-muted-foreground">Successfully finished</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button 
-              className="w-full justify-start" 
-              variant="outline"
-              onClick={() => onViewChange('timesheet')}
-            >
-              <Clock className="mr-2 h-4 w-4" />
-              Log Time Entry
-            </Button>
-            <Button 
-              className="w-full justify-start" 
-              variant="outline"
-              onClick={() => onViewChange('projects')}
-            >
-              <ClipboardList className="mr-2 h-4 w-4" />
-              View My Projects
-            </Button>
-            <Button 
-              className="w-full justify-start" 
-              variant="outline"
-              onClick={() => onViewChange('reports')}
-            >
-              <TrendingUp className="mr-2 h-4 w-4" />
-              View Reports
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm text-muted-foreground">
-              Recent time entries and project updates will appear here.
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </>
-  );
-
-  const renderAdminDashboard = () => (
-    <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalEmployees}</div>
-            <p className="text-xs text-muted-foreground">Active employees</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
-            <ClipboardList className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.activeProjects}</div>
-            <p className="text-xs text-muted-foreground">Currently running</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Approvals</CardTitle>
-            <AlertCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.pendingTimeEntries}</div>
-            <p className="text-xs text-muted-foreground">Require review</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed Projects</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.completedProjects}</div>
-            <p className="text-xs text-muted-foreground">Successfully delivered</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Admin Actions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button 
-              className="w-full justify-start" 
-              variant="outline"
-              onClick={() => onViewChange('admin-dashboard')}
-            >
-              <Users className="mr-2 h-4 w-4" />
-              Assign Tasks to Employees
-            </Button>
-            <Button 
-              className="w-full justify-start" 
-              variant="outline"
-              onClick={() => onViewChange('employees')}
-            >
-              <Users className="mr-2 h-4 w-4" />
-              Manage Employees
-            </Button>
-            <Button 
-              className="w-full justify-start" 
-              variant="outline"
-              onClick={() => onViewChange('projects')}
-            >
-              <ClipboardList className="mr-2 h-4 w-4" />
-              View All Projects
-            </Button>
-            <Button 
-              className="w-full justify-start" 
-              variant="outline"
-              onClick={() => onViewChange('reports')}
-            >
-              <TrendingUp className="mr-2 h-4 w-4" />
-              View Reports
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>System Overview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span>Projects on track:</span>
-                <span className="text-green-600">{stats.completedProjects}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Pending reviews:</span>
-                <span className="text-yellow-600">{stats.pendingTimeEntries}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Active workforce:</span>
-                <span className="text-blue-600">{stats.totalEmployees}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </>
-  );
-
   if (loading) {
     return (
       <div className="space-y-6">
@@ -365,16 +160,13 @@ const Dashboard = ({ onViewChange }: DashboardProps) => {
     );
   }
 
-  // Debug information
-  console.log('Dashboard rendering - Profile role:', profile?.role);
-
-  const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
+  console.log('Dashboard rendering - Profile role:', profile?.role, 'isAdmin:', isAdmin);
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-bold tracking-tight">
-          {isAdmin ? 'Admin Dashboard' : 'Dashboard'}
+          {isAdmin ? 'Admin Dashboard' : 'Employee Dashboard'}
         </h2>
         <div className="text-sm text-muted-foreground">
           {new Date().toLocaleDateString('en-US', { 
@@ -386,7 +178,214 @@ const Dashboard = ({ onViewChange }: DashboardProps) => {
         </div>
       </div>
 
-      {isAdmin ? renderAdminDashboard() : renderEmployeeDashboard()}
+      {isAdmin ? (
+        <>
+          {/* Admin Dashboard Content */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.totalEmployees}</div>
+                <p className="text-xs text-muted-foreground">Active employees</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
+                <ClipboardList className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.activeProjects}</div>
+                <p className="text-xs text-muted-foreground">Currently running</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Pending Approvals</CardTitle>
+                <AlertCircle className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.pendingTimeEntries}</div>
+                <p className="text-xs text-muted-foreground">Require review</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Completed Projects</CardTitle>
+                <CheckCircle className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.completedProjects}</div>
+                <p className="text-xs text-muted-foreground">Successfully delivered</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Admin Actions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={() => onViewChange('admin-dashboard')}
+                >
+                  <Users className="mr-2 h-4 w-4" />
+                  Assign Tasks to Employees
+                </Button>
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={() => onViewChange('employees')}
+                >
+                  <Users className="mr-2 h-4 w-4" />
+                  Manage Employees
+                </Button>
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={() => onViewChange('projects')}
+                >
+                  <ClipboardList className="mr-2 h-4 w-4" />
+                  View All Projects
+                </Button>
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={() => onViewChange('reports')}
+                >
+                  <TrendingUp className="mr-2 h-4 w-4" />
+                  View Reports
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>System Overview</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Projects on track:</span>
+                    <span className="text-green-600">{stats.completedProjects}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Pending reviews:</span>
+                    <span className="text-yellow-600">{stats.pendingTimeEntries}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Active workforce:</span>
+                    <span className="text-blue-600">{stats.totalEmployees}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Employee Dashboard Content */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">My Active Projects</CardTitle>
+                <ClipboardList className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.activeProjects}</div>
+                <p className="text-xs text-muted-foreground">Currently assigned</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">This Week Hours</CardTitle>
+                <Clock className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.thisWeekHours.toFixed(1)}</div>
+                <p className="text-xs text-muted-foreground">Hours logged</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Pending Entries</CardTitle>
+                <AlertCircle className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.pendingTimeEntries}</div>
+                <p className="text-xs text-muted-foreground">Awaiting approval</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Completed Projects</CardTitle>
+                <CheckCircle className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.completedProjects}</div>
+                <p className="text-xs text-muted-foreground">Successfully finished</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Quick Actions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={() => onViewChange('timesheet')}
+                >
+                  <Clock className="mr-2 h-4 w-4" />
+                  Log Time Entry
+                </Button>
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={() => onViewChange('projects')}
+                >
+                  <ClipboardList className="mr-2 h-4 w-4" />
+                  View My Projects
+                </Button>
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={() => onViewChange('reports')}
+                >
+                  <TrendingUp className="mr-2 h-4 w-4" />
+                  View Reports
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Activity</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-sm text-muted-foreground">
+                  Recent time entries and project updates will appear here.
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
     </div>
   );
 };
