@@ -2,8 +2,8 @@
 import WeeklyTimesheet from "./WeeklyTimesheet";
 
 interface TimeTrackerProps {
-  userRole: string;
-  onLogout: () => void;
+  userRole?: string;
+  onLogout?: () => void;
 }
 
 const TimeTracker = ({ userRole, onLogout }: TimeTrackerProps) => {
