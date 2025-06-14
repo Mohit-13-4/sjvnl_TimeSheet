@@ -41,7 +41,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.error('Error fetching profile:', error);
         return null;
       }
-      return data;
+      // Type assertion to ensure compatibility
+      return data as Profile;
     } catch (error) {
       console.error('Error fetching profile:', error);
       return null;
@@ -51,7 +52,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const refreshProfile = async () => {
     if (user) {
       const profileData = await fetchProfile(user.id);
-      setProfile(profileData);
+      if (profileData) {
+        setProfile(profileData);
+      }
     }
   };
 
@@ -62,7 +65,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        fetchProfile(session.user.id).then(setProfile);
+        fetchProfile(session.user.id).then((profileData) => {
+          if (profileData) {
+            setProfile(profileData);
+          }
+        });
       }
       setLoading(false);
     });
@@ -75,7 +82,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         if (session?.user) {
           const profileData = await fetchProfile(session.user.id);
-          setProfile(profileData);
+          if (profileData) {
+            setProfile(profileData);
+          }
         } else {
           setProfile(null);
         }

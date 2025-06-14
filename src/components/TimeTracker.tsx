@@ -1,136 +1,101 @@
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
+import { Calendar, Clock, Plus, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Calendar, Clock, Save, Plus } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface TimeEntry {
   id: string;
   task_name: string;
   hours: number;
   entry_date: string;
+  project_id: string | null;
+  status: 'pending' | 'approved' | 'rejected';
   week_start: string;
   is_leave: boolean;
-  status: 'pending' | 'approved' | 'rejected';
 }
 
 interface Project {
   id: string;
   name: string;
   allocated_hours: number;
-  start_date: string;
-  end_date: string;
 }
 
 interface TimeTrackerProps {
-  userRole: "Employee" | "Admin";
+  userRole: string;
   onLogout: () => void;
 }
 
 const TimeTracker = ({ userRole, onLogout }: TimeTrackerProps) => {
-  const { profile } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [currentWeek, setCurrentWeek] = useState(getStartOfWeek());
   const [newEntry, setNewEntry] = useState({
     task_name: "",
     hours: "",
+    entry_date: new Date().toISOString().split('T')[0],
     project_id: "",
     is_leave: false
   });
-  const [loading, setLoading] = useState(true);
 
-  // Get Monday of current week
-  function getStartOfWeek(date = new Date()) {
+  // Calculate week start (Monday)
+  const getWeekStart = (date: Date) => {
     const d = new Date(date);
     const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday as start
-    d.setDate(diff);
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }
-
-  function formatDate(date: Date) {
-    return date.toISOString().split('T')[0];
-  }
-
-  function getWeekDates(startDate: Date) {
-    const dates = [];
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(startDate);
-      date.setDate(startDate.getDate() + i);
-      dates.push(date);
-    }
-    return dates;
-  }
-
-  useEffect(() => {
-    if (profile) {
-      fetchTimeEntries();
-      fetchProjects();
-    }
-  }, [profile, currentWeek]);
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(d.setDate(diff)).toISOString().split('T')[0];
+  };
 
   const fetchTimeEntries = async () => {
-    try {
-      const weekStart = formatDate(currentWeek);
-      const weekEnd = formatDate(new Date(currentWeek.getTime() + 6 * 24 * 60 * 60 * 1000));
+    if (!user) return;
 
-      const { data, error } = await supabase
-        .from('time_entries')
-        .select('*')
-        .eq('user_id', profile?.id)
-        .gte('entry_date', weekStart)
-        .lte('entry_date', weekEnd)
-        .order('entry_date', { ascending: true });
+    const { data, error } = await supabase
+      .from('time_entries')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('entry_date', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching time entries:', error);
-        toast({
-          title: "Error",
-          description: "Failed to fetch time entries",
-          variant: "destructive"
-        });
-      } else {
-        setTimeEntries(data || []);
-      }
-    } catch (error) {
+    if (error) {
       console.error('Error fetching time entries:', error);
-    } finally {
-      setLoading(false);
+    } else {
+      // Type assertion to ensure status compatibility
+      const typedEntries = data.map(entry => ({
+        ...entry,
+        status: entry.status as 'pending' | 'approved' | 'rejected'
+      }));
+      setTimeEntries(typedEntries);
     }
   };
 
   const fetchProjects = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('assigned_to', profile?.id)
-        .eq('status', 'active')
-        .order('name');
+    if (!user) return;
 
-      if (error) {
-        console.error('Error fetching projects:', error);
-      } else {
-        setProjects(data || []);
-      }
-    } catch (error) {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('id, name, allocated_hours')
+      .eq('assigned_to', user.id);
+
+    if (error) {
       console.error('Error fetching projects:', error);
+    } else {
+      setProjects(data || []);
     }
   };
 
-  const handleAddEntry = async () => {
-    if (!newEntry.task_name || !newEntry.hours) {
+  useEffect(() => {
+    fetchTimeEntries();
+    fetchProjects();
+  }, [user]);
+
+  const addTimeEntry = async () => {
+    if (!user || !newEntry.task_name || !newEntry.hours) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -139,124 +104,67 @@ const TimeTracker = ({ userRole, onLogout }: TimeTrackerProps) => {
       return;
     }
 
-    try {
-      const { error } = await supabase
-        .from('time_entries')
-        .insert([{
-          user_id: profile?.id,
-          project_id: newEntry.project_id || null,
-          task_name: newEntry.task_name,
-          hours: parseFloat(newEntry.hours),
-          entry_date: formatDate(new Date()),
-          week_start: formatDate(currentWeek),
-          is_leave: newEntry.is_leave
-        }]);
+    const entryDate = new Date(newEntry.entry_date);
+    const weekStart = getWeekStart(entryDate);
 
-      if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to add time entry",
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "Success",
-          description: "Time entry added successfully",
-        });
-        setNewEntry({
-          task_name: "",
-          hours: "",
-          project_id: "",
-          is_leave: false
-        });
-        fetchTimeEntries();
-      }
-    } catch (error) {
+    const { error } = await supabase
+      .from('time_entries')
+      .insert({
+        user_id: user.id,
+        task_name: newEntry.task_name,
+        hours: parseFloat(newEntry.hours),
+        entry_date: newEntry.entry_date,
+        project_id: newEntry.project_id || null,
+        week_start: weekStart,
+        is_leave: newEntry.is_leave,
+        status: 'pending'
+      });
+
+    if (error) {
       console.error('Error adding time entry:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add time entry",
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Time entry added successfully"
+      });
+      setNewEntry({
+        task_name: "",
+        hours: "",
+        entry_date: new Date().toISOString().split('T')[0],
+        project_id: "",
+        is_leave: false
+      });
+      fetchTimeEntries();
     }
   };
 
-  const getWeeklyTotal = () => {
+  const getTotalHours = () => {
     return timeEntries.reduce((total, entry) => total + entry.hours, 0);
   };
 
-  const navigateWeek = (direction: 'prev' | 'next') => {
-    const newWeek = new Date(currentWeek);
-    newWeek.setDate(currentWeek.getDate() + (direction === 'next' ? 7 : -7));
-    setCurrentWeek(newWeek);
-  };
-
-  const weekDates = getWeekDates(currentWeek);
-  const weeklyTotal = getWeeklyTotal();
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-bold tracking-tight">Timesheet</h2>
-        <div className="flex items-center space-x-4">
-          <div className="text-sm text-muted-foreground">
-            Welcome, {profile?.full_name}
-          </div>
-        </div>
+    <div className="p-6 max-w-6xl mx-auto">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900">Time Tracker</h1>
+        <p className="text-gray-600">Track your daily work hours and tasks</p>
       </div>
-
-      {/* Week Navigation */}
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle className="flex items-center space-x-2">
-              <Calendar className="h-5 w-5" />
-              <span>Week of {currentWeek.toLocaleDateString()}</span>
-            </CardTitle>
-            <div className="flex items-center space-x-2">
-              <Button variant="outline" size="sm" onClick={() => navigateWeek('prev')}>
-                Previous
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setCurrentWeek(getStartOfWeek())}>
-                This Week
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => navigateWeek('next')}>
-                Next
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-7 gap-2 text-center text-sm">
-            {weekDates.map((date, index) => (
-              <div key={index} className="p-2 border rounded">
-                <div className="font-medium">
-                  {date.toLocaleDateString('en-US', { weekday: 'short' })}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {date.getDate()}
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Add New Entry */}
-      <Card>
+      <Card className="mb-6">
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Plus className="h-5 w-5" />
-            <span>Add Time Entry</span>
+          <CardTitle className="flex items-center gap-2">
+            <Plus className="w-5 h-5" />
+            Add Time Entry
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div>
               <Label htmlFor="task">Task Name</Label>
               <Input
                 id="task"
@@ -265,7 +173,8 @@ const TimeTracker = ({ userRole, onLogout }: TimeTrackerProps) => {
                 placeholder="Enter task description"
               />
             </div>
-            <div className="space-y-2">
+            
+            <div>
               <Label htmlFor="hours">Hours</Label>
               <Input
                 id="hours"
@@ -278,8 +187,19 @@ const TimeTracker = ({ userRole, onLogout }: TimeTrackerProps) => {
                 placeholder="0.0"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="project">Project (Optional)</Label>
+            
+            <div>
+              <Label htmlFor="date">Date</Label>
+              <Input
+                id="date"
+                type="date"
+                value={newEntry.entry_date}
+                onChange={(e) => setNewEntry(prev => ({ ...prev, entry_date: e.target.value }))}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="project">Project</Label>
               <Select 
                 value={newEntry.project_id} 
                 onValueChange={(value) => setNewEntry(prev => ({ ...prev, project_id: value }))}
@@ -288,7 +208,7 @@ const TimeTracker = ({ userRole, onLogout }: TimeTrackerProps) => {
                   <SelectValue placeholder="Select project" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No project</SelectItem>
+                  <SelectItem value="">No Project</SelectItem>
                   {projects.map((project) => (
                     <SelectItem key={project.id} value={project.id}>
                       {project.name}
@@ -297,8 +217,9 @@ const TimeTracker = ({ userRole, onLogout }: TimeTrackerProps) => {
                 </SelectContent>
               </Select>
             </div>
+            
             <div className="flex items-end">
-              <Button onClick={handleAddEntry} className="w-full">
+              <Button onClick={addTimeEntry} className="w-full">
                 <Save className="w-4 h-4 mr-2" />
                 Add Entry
               </Button>
@@ -307,61 +228,89 @@ const TimeTracker = ({ userRole, onLogout }: TimeTrackerProps) => {
         </CardContent>
       </Card>
 
-      {/* Time Entries Table */}
+      {/* Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Hours</p>
+                <p className="text-2xl font-bold text-blue-600">{getTotalHours()}</p>
+              </div>
+              <Clock className="w-8 h-8 text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">This Week</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {timeEntries
+                    .filter(entry => {
+                      const today = new Date();
+                      const weekStart = getWeekStart(today);
+                      return entry.week_start === weekStart;
+                    })
+                    .reduce((total, entry) => total + entry.hours, 0)}
+                </p>
+              </div>
+              <Calendar className="w-8 h-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Projects</p>
+                <p className="text-2xl font-bold text-purple-600">{projects.length}</p>
+              </div>
+              <Plus className="w-8 h-8 text-purple-600" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Time Entries List */}
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle className="flex items-center space-x-2">
-              <Clock className="h-5 w-5" />
-              <span>Time Entries</span>
-            </CardTitle>
-            <div className="text-sm font-medium">
-              Total: {weeklyTotal.toFixed(1)} hours
-            </div>
-          </div>
+          <CardTitle>Recent Time Entries</CardTitle>
         </CardHeader>
         <CardContent>
-          {timeEntries.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No time entries for this week. Add your first entry above.
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Task</TableHead>
-                  <TableHead>Hours</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {timeEntries.map((entry) => (
-                  <TableRow key={entry.id}>
-                    <TableCell>
-                      {new Date(entry.entry_date).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      {entry.is_leave ? (
-                        <span className="italic text-orange-600">Leave</span>
-                      ) : (
-                        entry.task_name
+          <div className="space-y-4">
+            {timeEntries.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">No time entries yet. Add your first entry above!</p>
+            ) : (
+              timeEntries.map((entry) => (
+                <div key={entry.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex-1">
+                    <h3 className="font-medium text-gray-900">{entry.task_name}</h3>
+                    <p className="text-sm text-gray-500">
+                      {entry.entry_date} • {entry.hours} hours
+                      {entry.project_id && (
+                        <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                          {projects.find(p => p.id === entry.project_id)?.name || 'Unknown Project'}
+                        </span>
                       )}
-                    </TableCell>
-                    <TableCell>{entry.hours}</TableCell>
-                    <TableCell>
-                      <Badge variant={
-                        entry.status === 'approved' ? 'default' :
-                        entry.status === 'rejected' ? 'destructive' : 'secondary'
-                      }>
-                        {entry.status}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      entry.status === 'approved' ? 'bg-green-100 text-green-800' :
+                      entry.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                      'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {entry.status.charAt(0).toUpperCase() + entry.status.slice(1)}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

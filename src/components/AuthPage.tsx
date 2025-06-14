@@ -1,10 +1,12 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -16,20 +18,43 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
+  // Captcha state
+  const [captcha, setCaptcha] = useState("");
+  const [captchaValue, setCaptchaValue] = useState("");
+
   // Sign Up Form State
   const [signUpData, setSignUpData] = useState({
     employeeId: "",
     fullName: "",
     email: "",
     password: "",
-    confirmPassword: ""
+    confirmPassword: "",
+    role: ""
   });
 
   // Sign In Form State
   const [signInData, setSignInData] = useState({
-    email: "",
-    password: ""
+    employeeId: "",
+    password: "",
+    captchaInput: ""
   });
+
+  const generateCaptcha = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < 6; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setCaptchaValue(result);
+    setCaptcha("");
+    setSignInData(prev => ({ ...prev, captchaInput: "" }));
+  };
+
+  useEffect(() => {
+    generateCaptcha();
+    const interval = setInterval(generateCaptcha, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,15 +67,28 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
       return;
     }
 
+    if (!signUpData.role) {
+      toast({
+        title: "Error",
+        description: "Please select a role",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
+      // Generate email from employee ID
+      const email = `${signUpData.employeeId}@sjvn.com`;
+      
       const { error } = await supabase.auth.signUp({
-        email: signUpData.email,
+        email: email,
         password: signUpData.password,
         options: {
           data: {
             employee_id: signUpData.employeeId,
-            full_name: signUpData.fullName
+            full_name: signUpData.fullName,
+            role: signUpData.role
           },
           emailRedirectTo: `${window.location.origin}/`
         }
@@ -65,7 +103,16 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
       } else {
         toast({
           title: "Success",
-          description: "Please check your email to confirm your account",
+          description: "Account created successfully! You can now sign in.",
+        });
+        // Clear form
+        setSignUpData({
+          employeeId: "",
+          fullName: "",
+          email: "",
+          password: "",
+          confirmPassword: "",
+          role: ""
         });
       }
     } catch (error) {
@@ -81,11 +128,25 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (signInData.captchaInput !== captchaValue) {
+      toast({
+        title: "Error",
+        description: "Invalid captcha. Please try again.",
+        variant: "destructive"
+      });
+      generateCaptcha();
+      return;
+    }
+
     setIsLoading(true);
 
     try {
+      // Generate email from employee ID
+      const email = `${signInData.employeeId}@sjvn.com`;
+      
       const { error } = await supabase.auth.signInWithPassword({
-        email: signInData.email,
+        email: email,
         password: signInData.password
       });
 
@@ -95,6 +156,7 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
           description: error.message,
           variant: "destructive"
         });
+        generateCaptcha();
       } else {
         onAuthSuccess();
       }
@@ -153,13 +215,13 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
               <TabsContent value="signin">
                 <form onSubmit={handleSignIn} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signin-email">Email</Label>
+                    <Label htmlFor="signin-employee-id">Employee ID</Label>
                     <Input
-                      id="signin-email"
-                      type="email"
-                      placeholder="Enter your email"
-                      value={signInData.email}
-                      onChange={(e) => setSignInData(prev => ({ ...prev, email: e.target.value }))}
+                      id="signin-employee-id"
+                      type="text"
+                      placeholder="Enter your employee ID"
+                      value={signInData.employeeId}
+                      onChange={(e) => setSignInData(prev => ({ ...prev, employeeId: e.target.value }))}
                       required
                     />
                   </div>
@@ -176,10 +238,32 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                     />
                   </div>
 
+                  <div className="space-y-2">
+                    <Label htmlFor="captcha">Enter Captcha</Label>
+                    <div className="flex gap-2 items-center">
+                      <div className="flex-1 flex gap-2">
+                        <div className="bg-gray-100 border rounded px-3 py-2 text-center font-mono text-sm flex-1">
+                          {captchaValue}
+                        </div>
+                        <Button type="button" variant="outline" size="sm" onClick={generateCaptcha}>
+                          <RefreshCw className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <Input
+                      id="captcha"
+                      type="text"
+                      placeholder="Type here"
+                      value={signInData.captchaInput}
+                      onChange={(e) => setSignInData(prev => ({ ...prev, captchaInput: e.target.value }))}
+                      required
+                    />
+                  </div>
+
                   <Button 
                     type="submit" 
                     className="w-full bg-blue-600 hover:bg-blue-700"
-                    disabled={isLoading}
+                    disabled={isLoading || !signInData.employeeId || !signInData.password || !signInData.captchaInput}
                   >
                     {isLoading ? "Signing In..." : "Sign In"}
                   </Button>
@@ -213,15 +297,16 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="Enter your email"
-                      value={signUpData.email}
-                      onChange={(e) => setSignUpData(prev => ({ ...prev, email: e.target.value }))}
-                      required
-                    />
+                    <Label htmlFor="role">Select Role</Label>
+                    <Select value={signUpData.role} onValueChange={(value) => setSignUpData(prev => ({ ...prev, role: value }))}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Choose your role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="employee">Employee</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="space-y-2">
