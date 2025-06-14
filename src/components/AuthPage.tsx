@@ -88,7 +88,8 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
             employee_id: signUpData.employeeId,
             full_name: signUpData.fullName,
             role: signUpData.role
-          }
+          },
+          emailRedirectTo: undefined // Disable email confirmation
         }
       });
 
@@ -157,7 +158,13 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
       });
 
       if (error) {
-        if (error.message.includes("Invalid login credentials")) {
+        if (error.message.includes("Email not confirmed")) {
+          toast({
+            title: "Configuration Issue",
+            description: "Email confirmation is still enabled in Supabase. Please contact your administrator to disable email confirmation in Authentication settings.",
+            variant: "destructive"
+          });
+        } else if (error.message.includes("Invalid login credentials")) {
           toast({
             title: "Sign In Failed",
             description: "Invalid Employee ID or password. Please check your credentials.",
