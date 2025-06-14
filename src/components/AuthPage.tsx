@@ -94,6 +94,7 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
       });
 
       if (error) {
+        console.error("Sign up error:", error);
         if (error.message.includes("duplicate key value")) {
           toast({
             title: "Sign Up Failed",
@@ -152,13 +153,22 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
       // Generate email from employee ID
       const email = `${signInData.employeeId}@sjvn.com`;
       
+      console.log("Attempting to sign in with email:", email);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email,
         password: signInData.password
       });
 
       if (error) {
-        if (error.message.includes("Email not confirmed")) {
+        console.error("Sign in error:", error);
+        if (error.message.includes("Email logins are disabled")) {
+          toast({
+            title: "Authentication Error",
+            description: "Email authentication is disabled. Please contact your administrator to enable email logins in Supabase settings.",
+            variant: "destructive"
+          });
+        } else if (error.message.includes("Email not confirmed")) {
           toast({
             title: "Configuration Issue",
             description: "Email confirmation is still enabled in Supabase. Please contact your administrator to disable email confirmation in Authentication settings.",
@@ -179,6 +189,7 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
         }
         generateCaptcha();
       } else if (data.session) {
+        console.log("Sign in successful:", data);
         toast({
           title: "Success",
           description: "Signed in successfully!",
