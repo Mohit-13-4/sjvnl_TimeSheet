@@ -9,6 +9,8 @@ import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 
 interface Project {
   id: string;
@@ -37,8 +39,12 @@ const WeeklyTimesheet = () => {
   const [weeklyHours, setWeeklyHours] = useState<WeeklyHours>({});
   const [leaveStatus, setLeaveStatus] = useState<LeaveStatus>({});
   const [comment, setComment] = useState("");
+  const [showCalendar, setShowCalendar] = useState(false);
 
   const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  // Check if user is admin
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
 
   // Get the start of the week (Monday)
   const getWeekStart = (date: Date) => {
@@ -81,6 +87,14 @@ const WeeklyTimesheet = () => {
     const newWeek = new Date(currentWeek);
     newWeek.setDate(newWeek.getDate() + (direction === 'next' ? 7 : -7));
     setCurrentWeek(newWeek);
+  };
+
+  // Handle week selection from calendar
+  const handleWeekSelect = (date: Date | undefined) => {
+    if (date) {
+      setCurrentWeek(date);
+      setShowCalendar(false);
+    }
   };
 
   // Update hours for a project and day
@@ -127,6 +141,14 @@ const WeeklyTimesheet = () => {
   // Count leave days
   const getLeaveCount = () => {
     return Object.values(leaveStatus).filter(Boolean).length;
+  };
+
+  // Calculate adjusted weekly target based on holidays
+  const getWeeklyTarget = () => {
+    const leaveCount = getLeaveCount();
+    const baseTarget = 40;
+    const hoursPerDay = 8;
+    return Math.max(0, baseTarget - (leaveCount * hoursPerDay));
   };
 
   // Handle save
@@ -177,9 +199,21 @@ const WeeklyTimesheet = () => {
                   <ChevronLeft className="w-4 h-4" />
                   Previous
                 </Button>
-                <Button variant="outline" size="sm">
-                  Select Week
-                </Button>
+                <Popover open={showCalendar} onOpenChange={setShowCalendar}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      Select Week
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 bg-white border shadow-lg z-50" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={currentWeek}
+                      onSelect={handleWeekSelect}
+                      className="rounded-md border"
+                    />
+                  </PopoverContent>
+                </Popover>
                 <Button variant="outline" size="sm" onClick={() => navigateWeek('next')}>
                   Next
                   <ChevronRight className="w-4 h-4" />
@@ -201,7 +235,8 @@ const WeeklyTimesheet = () => {
               <span className="font-medium">Working Hours:</span> 8 hours per day
             </div>
             <div className="text-blue-700">
-              <span className="font-medium">Weekly Target:</span> 40 hours
+              <span className="font-medium">Weekly Target:</span> {getWeeklyTarget()} hours
+              {getLeaveCount() > 0 && <span className="text-orange-600 ml-1">({getLeaveCount()} holiday{getLeaveCount() > 1 ? 's' : ''})</span>}
             </div>
             <div className="text-blue-700">
               <span className="font-medium">Current Total:</span> {getGrandTotal().toFixed(2)} hours
@@ -235,16 +270,22 @@ const WeeklyTimesheet = () => {
                     <td className="p-4 font-medium">{project.name}</td>
                     {daysOfWeek.map((day) => (
                       <td key={day} className="p-2">
-                        <Input
-                          type="number"
-                          step="0.5"
-                          min="0"
-                          max="8"
-                          value={weeklyHours[project.id]?.[day] || ''}
-                          onChange={(e) => updateHours(project.id, day, e.target.value)}
-                          className="text-center"
-                          placeholder="0.00"
-                        />
+                        {isAdmin ? (
+                          <div className="text-center p-2 text-gray-400 italic">
+                            View Only
+                          </div>
+                        ) : (
+                          <Input
+                            type="number"
+                            step="0.5"
+                            min="0"
+                            max="8"
+                            value={weeklyHours[project.id]?.[day] || ''}
+                            onChange={(e) => updateHours(project.id, day, e.target.value)}
+                            className="text-center"
+                            placeholder="0.00"
+                          />
+                        )}
                       </td>
                     ))}
                     <td className="p-4 text-center font-medium">
@@ -258,10 +299,14 @@ const WeeklyTimesheet = () => {
                   <td className="p-4 font-medium text-orange-600">Leave/Holiday</td>
                   {daysOfWeek.map((day) => (
                     <td key={day} className="p-4 text-center">
-                      <Checkbox
-                        checked={leaveStatus[day] || false}
-                        onCheckedChange={() => toggleLeave(day)}
-                      />
+                      {isAdmin ? (
+                        <div className="text-gray-400 italic">View Only</div>
+                      ) : (
+                        <Checkbox
+                          checked={leaveStatus[day] || false}
+                          onCheckedChange={() => toggleLeave(day)}
+                        />
+                      )}
                     </td>
                   ))}
                   <td className="p-4 text-center font-medium text-orange-600">
@@ -298,6 +343,7 @@ const WeeklyTimesheet = () => {
               placeholder="Please enter the comments"
               className="min-h-[100px]"
               maxLength={255}
+              disabled={isAdmin}
             />
             <div className="text-right text-sm text-gray-500">
               {comment.length} / 255
@@ -306,15 +352,17 @@ const WeeklyTimesheet = () => {
         </CardContent>
       </Card>
 
-      {/* Action Buttons */}
-      <div className="flex justify-end space-x-4">
-        <Button variant="outline" onClick={handleSave}>
-          Save
-        </Button>
-        <Button onClick={handleSubmit}>
-          Submit
-        </Button>
-      </div>
+      {/* Action Buttons - Only show for non-admin users */}
+      {!isAdmin && (
+        <div className="flex justify-end space-x-4">
+          <Button variant="outline" onClick={handleSave}>
+            Save
+          </Button>
+          <Button onClick={handleSubmit}>
+            Submit
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
