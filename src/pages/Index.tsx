@@ -3,14 +3,15 @@ import { useState } from "react";
 import { useAuth, AuthProvider } from "@/hooks/useAuth";
 import AuthPage from "@/components/AuthPage";
 import ForgotPasswordPage from "@/components/ForgotPasswordPage";
-import Navigation from "@/components/Navigation";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/AppSidebar";
 import Dashboard from "@/components/Dashboard";
 import TimeTracker from "@/components/TimeTracker";
 
 const IndexContent = () => {
   const { user, loading } = useAuth();
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [currentView, setCurrentView] = useState("dashboard");
+  const [currentView, setCurrentView] = useState("timesheet");
 
   if (loading) {
     return (
@@ -30,7 +31,7 @@ const IndexContent = () => {
     }
     return (
       <AuthPage 
-        onAuthSuccess={() => setCurrentView("dashboard")}
+        onAuthSuccess={() => setCurrentView("timesheet")}
       />
     );
   }
@@ -77,20 +78,21 @@ const IndexContent = () => {
           </div>
         );
       default:
-        return <Dashboard onViewChange={setCurrentView} />;
+        return <TimeTracker userRole="Employee" onLogout={() => {}} />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navigation 
-        currentView={currentView}
-        onViewChange={setCurrentView}
-      />
-      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        {renderCurrentView()}
-      </main>
-    </div>
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full">
+        <AppSidebar currentView={currentView} onViewChange={setCurrentView} />
+        <SidebarInset className="flex-1">
+          <main className="p-6">
+            {renderCurrentView()}
+          </main>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 };
 
