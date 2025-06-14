@@ -25,6 +25,13 @@ const MainApp = () => {
     }
   }, [profile, currentView]);
 
+  // Reset view when user changes
+  useEffect(() => {
+    if (!user) {
+      setCurrentView("");
+    }
+  }, [user]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -53,15 +60,15 @@ const MainApp = () => {
       case "time-tracker":
         return <TimeTracker />;
       case "projects":
-        return <div>Projects View</div>;
+        return <div className="p-6">Projects View</div>;
       case "employees":
-        return <div>Employee Management View</div>;
+        return <div className="p-6">Employee Management View</div>;
       case "reports":
-        return <div>Reports View</div>;
+        return <div className="p-6">Reports View</div>;
       case "profile":
-        return <div>Profile View</div>;
+        return <div className="p-6">Profile View</div>;
       case "settings":
-        return <div>Settings View</div>;
+        return <div className="p-6">Settings View</div>;
       default:
         // Default based on role if no view is set
         if (profile?.role === 'admin' || profile?.role === 'super_admin') {

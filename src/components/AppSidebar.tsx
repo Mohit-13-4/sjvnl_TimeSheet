@@ -9,7 +9,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { 
@@ -177,7 +176,7 @@ const AppSidebar = ({ currentView, onViewChange }: AppSidebarProps) => {
               Welcome, {profile?.full_name || 'User'}
             </div>
             <div className="text-xs text-gray-500">
-              ID: {profile?.employee_id || 'Loading...'} | Role: {(profile?.role || 'Loading...').toUpperCase()}
+              ID: {profile?.employee_id || 'Loading...'} | Role: {profile?.role ? profile.role.toUpperCase() : 'LOADING...'}
             </div>
           </div>
           <Button 
