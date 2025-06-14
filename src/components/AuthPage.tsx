@@ -26,7 +26,6 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
   const [signUpData, setSignUpData] = useState({
     employeeId: "",
     fullName: "",
-    email: "",
     password: "",
     confirmPassword: "",
     role: ""
@@ -81,7 +80,7 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
       // Generate email from employee ID
       const email = `${signUpData.employeeId}@sjvn.com`;
       
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: email,
         password: signUpData.password,
         options: {
@@ -95,27 +94,44 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
       });
 
       if (error) {
-        toast({
-          title: "Sign Up Failed",
-          description: error.message,
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "Success",
-          description: "Account created successfully! You can now sign in.",
-        });
+        if (error.message.includes("duplicate key value")) {
+          toast({
+            title: "Sign Up Failed",
+            description: "Employee ID already exists. Please use a different Employee ID.",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "Sign Up Failed",
+            description: error.message,
+            variant: "destructive"
+          });
+        }
+      } else if (data.user) {
+        // Check if user needs email confirmation
+        if (!data.session) {
+          toast({
+            title: "Account Created",
+            description: "Account created successfully! Please check your email to confirm your account, or try signing in directly.",
+          });
+        } else {
+          toast({
+            title: "Success",
+            description: "Account created and signed in successfully!",
+          });
+          onAuthSuccess();
+        }
         // Clear form
         setSignUpData({
           employeeId: "",
           fullName: "",
-          email: "",
           password: "",
           confirmPassword: "",
           role: ""
         });
       }
     } catch (error) {
+      console.error("Sign up error:", error);
       toast({
         title: "Error",
         description: "An unexpected error occurred",
@@ -145,22 +161,41 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
       // Generate email from employee ID
       const email = `${signInData.employeeId}@sjvn.com`;
       
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: email,
         password: signInData.password
       });
 
       if (error) {
-        toast({
-          title: "Sign In Failed",
-          description: error.message,
-          variant: "destructive"
-        });
+        if (error.message.includes("Email not confirmed")) {
+          toast({
+            title: "Account Not Activated",
+            description: "Your account exists but needs to be activated. Please contact your administrator or try signing up again.",
+            variant: "destructive"
+          });
+        } else if (error.message.includes("Invalid login credentials")) {
+          toast({
+            title: "Sign In Failed",
+            description: "Invalid Employee ID or password. Please check your credentials.",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "Sign In Failed",
+            description: error.message,
+            variant: "destructive"
+          });
+        }
         generateCaptcha();
-      } else {
+      } else if (data.session) {
+        toast({
+          title: "Success",
+          description: "Signed in successfully!",
+        });
         onAuthSuccess();
       }
     } catch (error) {
+      console.error("Sign in error:", error);
       toast({
         title: "Error", 
         description: "An unexpected error occurred",
