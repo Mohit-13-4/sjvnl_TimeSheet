@@ -1,482 +1,370 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { LogOut, Calendar as CalendarIcon, Clock, Users, FileText, Settings, BarChart3, AlertTriangle } from "lucide-react";
-import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays } from "date-fns";
-import { cn } from "@/lib/utils";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-  SidebarHeader,
-} from "@/components/ui/sidebar";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { Calendar, Clock, Save, Plus } from "lucide-react";
+
+interface TimeEntry {
+  id: string;
+  task_name: string;
+  hours: number;
+  entry_date: string;
+  week_start: string;
+  is_leave: boolean;
+  status: 'pending' | 'approved' | 'rejected';
+}
+
+interface Project {
+  id: string;
+  name: string;
+  allocated_hours: number;
+  start_date: string;
+  end_date: string;
+}
 
 interface TimeTrackerProps {
-  userRole: "Employee" | "Admin" | null;
+  userRole: "Employee" | "Admin";
   onLogout: () => void;
 }
 
 const TimeTracker = ({ userRole, onLogout }: TimeTrackerProps) => {
-  const [currentWeek, setCurrentWeek] = useState(new Date());
-  const [timeEntries, setTimeEntries] = useState({
-    Website: { sun: "", mon: "", tue: "", wed: "", thu: "", fri: "", sat: "" },
-    "Web Page": { sun: "", mon: "", tue: "", wed: "", thu: "", fri: "", sat: "" },
-    "Leave/Holiday": { sun: "", mon: "", tue: "", wed: "", thu: "", fri: "", sat: "" }
+  const { profile } = useAuth();
+  const { toast } = useToast();
+  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [currentWeek, setCurrentWeek] = useState(getStartOfWeek());
+  const [newEntry, setNewEntry] = useState({
+    task_name: "",
+    hours: "",
+    project_id: "",
+    is_leave: false
   });
-  const [comment, setComment] = useState("");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
 
-  const weekStart = startOfWeek(currentWeek, { weekStartsOn: 0 });
-  const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 0 });
+  // Get Monday of current week
+  function getStartOfWeek(date = new Date()) {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday as start
+    d.setDate(diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
 
-  const weekDays = Array.from({ length: 7 }, (_, i) => {
-    const day = addDays(weekStart, i);
-    return {
-      key: ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][i],
-      label: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][i],
-      date: format(day, "MMM d"),
-      fullDate: day
-    };
-  });
+  function formatDate(date: Date) {
+    return date.toISOString().split('T')[0];
+  }
 
-  // Menu items for the sidebar
-  const menuItems = [
-    {
-      title: "Timesheet",
-      url: "#",
-      icon: Clock,
-    },
-    {
-      title: "Reports",
-      url: "#",
-      icon: BarChart3,
-    },
-    {
-      title: "Projects",
-      url: "#",
-      icon: FileText,
-    },
-    ...(userRole === "Admin" ? [
-      {
-        title: "Team",
-        url: "#",
-        icon: Users,
+  function getWeekDates(startDate: Date) {
+    const dates = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
+      dates.push(date);
+    }
+    return dates;
+  }
+
+  useEffect(() => {
+    if (profile) {
+      fetchTimeEntries();
+      fetchProjects();
+    }
+  }, [profile, currentWeek]);
+
+  const fetchTimeEntries = async () => {
+    try {
+      const weekStart = formatDate(currentWeek);
+      const weekEnd = formatDate(new Date(currentWeek.getTime() + 6 * 24 * 60 * 60 * 1000));
+
+      const { data, error } = await supabase
+        .from('time_entries')
+        .select('*')
+        .eq('user_id', profile?.id)
+        .gte('entry_date', weekStart)
+        .lte('entry_date', weekEnd)
+        .order('entry_date', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching time entries:', error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch time entries",
+          variant: "destructive"
+        });
+      } else {
+        setTimeEntries(data || []);
       }
-    ] : []),
-    {
-      title: "Settings",
-      url: "#",
-      icon: Settings,
-    },
-  ];
+    } catch (error) {
+      console.error('Error fetching time entries:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const handleTimeChange = (project: string, day: string, value: string) => {
-    const numValue = parseFloat(value) || 0;
-    const newErrors = { ...validationErrors };
-    
-    // Clear previous errors for this field
-    delete newErrors[`${project}-${day}`];
-    delete newErrors[`day-${day}`];
-    delete newErrors["week"];
+  const fetchProjects = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('assigned_to', profile?.id)
+        .eq('status', 'active')
+        .order('name');
 
-    // Validate daily limit (8 hours max per day)
-    if (numValue > 8) {
-      newErrors[`${project}-${day}`] = "Maximum 8 hours per day";
-      setValidationErrors(newErrors);
+      if (error) {
+        console.error('Error fetching projects:', error);
+      } else {
+        setProjects(data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    }
+  };
+
+  const handleAddEntry = async () => {
+    if (!newEntry.task_name || !newEntry.hours) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      });
       return;
     }
 
-    const updatedEntries = {
-      ...timeEntries,
-      [project]: {
-        ...timeEntries[project as keyof typeof timeEntries],
-        [day]: value
+    try {
+      const { error } = await supabase
+        .from('time_entries')
+        .insert([{
+          user_id: profile?.id,
+          project_id: newEntry.project_id || null,
+          task_name: newEntry.task_name,
+          hours: parseFloat(newEntry.hours),
+          entry_date: formatDate(new Date()),
+          week_start: formatDate(currentWeek),
+          is_leave: newEntry.is_leave
+        }]);
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to add time entry",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "Time entry added successfully",
+        });
+        setNewEntry({
+          task_name: "",
+          hours: "",
+          project_id: "",
+          is_leave: false
+        });
+        fetchTimeEntries();
       }
-    };
-
-    // Calculate new day total
-    const dayTotal = Object.keys(updatedEntries).reduce((total, proj) => {
-      if (proj === "Leave/Holiday") return total;
-      const hours = parseFloat(updatedEntries[proj as keyof typeof updatedEntries][day as keyof typeof updatedEntries.Website]) || 0;
-      return total + hours;
-    }, 0);
-
-    // Check if Leave/Holiday is selected for this day
-    const isLeaveDay = parseFloat(updatedEntries["Leave/Holiday"][day as keyof typeof updatedEntries.Website]) > 0;
-
-    if (!isLeaveDay && dayTotal > 8) {
-      newErrors[`day-${day}`] = "Total daily hours cannot exceed 8";
+    } catch (error) {
+      console.error('Error adding time entry:', error);
     }
-
-    // Calculate weekly total
-    const weekTotal = calculateWeeklyTotal(updatedEntries);
-    if (weekTotal > 40) {
-      newErrors["week"] = "Total weekly hours cannot exceed 40";
-    }
-
-    setValidationErrors(newErrors);
-    setTimeEntries(updatedEntries);
   };
 
-  const calculateDayTotal = (day: string) => {
-    const isLeaveDay = parseFloat(timeEntries["Leave/Holiday"][day as keyof typeof timeEntries.Website]) > 0;
-    if (isLeaveDay) return "Leave";
-    
-    return Object.keys(timeEntries).reduce((total, project) => {
-      if (project === "Leave/Holiday") return total;
-      const hours = parseFloat(timeEntries[project as keyof typeof timeEntries][day as keyof typeof timeEntries.Website]) || 0;
-      return total + hours;
-    }, 0).toFixed(2);
-  };
-
-  const calculateProjectTotal = (project: string) => {
-    return Object.values(timeEntries[project as keyof typeof timeEntries]).reduce((total, hours) => {
-      return total + (parseFloat(hours as string) || 0);
-    }, 0).toFixed(2);
-  };
-
-  const calculateWeeklyTotal = (entries = timeEntries) => {
-    return Object.keys(entries).reduce((total, project) => {
-      if (project === "Leave/Holiday") return total;
-      return total + parseFloat(calculateProjectTotal(project));
-    }, 0);
-  };
-
-  const calculateGrandTotal = () => {
-    return calculateWeeklyTotal().toFixed(2);
+  const getWeeklyTotal = () => {
+    return timeEntries.reduce((total, entry) => total + entry.hours, 0);
   };
 
   const navigateWeek = (direction: 'prev' | 'next') => {
-    if (direction === 'prev') {
-      setCurrentWeek(subWeeks(currentWeek, 1));
-    } else {
-      setCurrentWeek(addWeeks(currentWeek, 1));
-    }
+    const newWeek = new Date(currentWeek);
+    newWeek.setDate(currentWeek.getDate() + (direction === 'next' ? 7 : -7));
+    setCurrentWeek(newWeek);
   };
 
-  const handleCalendarSelect = (date: Date | undefined) => {
-    if (date) {
-      setCurrentWeek(date);
-    }
-  };
+  const weekDates = getWeekDates(currentWeek);
+  const weeklyTotal = getWeeklyTotal();
 
-  const handleSubmit = () => {
-    if (Object.keys(validationErrors).length > 0) {
-      alert("Please fix validation errors before submitting.");
-      return;
-    }
-    console.log("Submitting timesheet:", { timeEntries, comment, week: format(weekStart, "yyyy-MM-dd") });
-    alert("Timesheet submitted successfully!");
-  };
-
-  const handleSave = () => {
-    console.log("Saving timesheet:", { timeEntries, comment, week: format(weekStart, "yyyy-MM-dd") });
-    alert("Timesheet saved successfully!");
-  };
-
-  const weeklyTotal = calculateWeeklyTotal();
-  const isOverWeeklyLimit = weeklyTotal > 40;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-gray-50">
-        {/* Hover trigger area */}
-        <div 
-          className="fixed left-0 top-0 w-4 h-full z-50 bg-transparent"
-          onMouseEnter={() => setSidebarOpen(true)}
-        />
-
-        {/* Sidebar with hover behavior */}
-        <div 
-          className={`fixed left-0 top-0 h-full z-40 transition-transform duration-300 ${
-            sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          }`}
-          onMouseLeave={() => setSidebarOpen(false)}
-        >
-          <Sidebar className="w-64 h-full">
-            <SidebarHeader className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-blue-500 rounded flex items-center justify-center">
-                  <div className="text-white font-bold text-xs">SJVN</div>
-                </div>
-                <div>
-                  <h2 className="font-semibold text-gray-900">TimeTracker</h2>
-                  <p className="text-xs text-gray-600">{userRole}</p>
-                </div>
-              </div>
-            </SidebarHeader>
-            
-            <SidebarContent>
-              <SidebarGroup>
-                <SidebarGroupLabel>Navigation</SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {menuItems.map((item) => (
-                      <SidebarMenuItem key={item.title}>
-                        <SidebarMenuButton asChild>
-                          <a href={item.url}>
-                            <item.icon />
-                            <span>{item.title}</span>
-                          </a>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            </SidebarContent>
-          </Sidebar>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <h2 className="text-3xl font-bold tracking-tight">Timesheet</h2>
+        <div className="flex items-center space-x-4">
+          <div className="text-sm text-muted-foreground">
+            Welcome, {profile?.full_name}
+          </div>
         </div>
+      </div>
 
-        {/* Small visible edge when sidebar is hidden */}
-        <div 
-          className={`fixed left-0 top-1/2 transform -translate-y-1/2 w-1 h-20 bg-blue-500 rounded-r-md z-30 transition-opacity duration-300 ${
-            sidebarOpen ? 'opacity-0' : 'opacity-100'
-          }`}
-        />
-
-        <main className="flex-1">
-          {/* Header */}
-          <div className="bg-white shadow-sm border-b">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex justify-between items-center h-16">
-                <div className="flex items-center space-x-4">
-                  <h1 className="text-xl font-semibold text-gray-900">Timesheet</h1>
-                </div>
-                <div className="flex items-center space-x-4">
-                  <span className="text-sm text-gray-600">Welcome, {userRole}</span>
-                  <Button variant="outline" size="sm" onClick={onLogout}>
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Logout
-                  </Button>
-                </div>
-              </div>
+      {/* Week Navigation */}
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle className="flex items-center space-x-2">
+              <Calendar className="h-5 w-5" />
+              <span>Week of {currentWeek.toLocaleDateString()}</span>
+            </CardTitle>
+            <div className="flex items-center space-x-2">
+              <Button variant="outline" size="sm" onClick={() => navigateWeek('prev')}>
+                Previous
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setCurrentWeek(getStartOfWeek())}>
+                This Week
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => navigateWeek('next')}>
+                Next
+              </Button>
             </div>
           </div>
-
-          {/* Main Content */}
-          <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-            <Card className="shadow-lg">
-              <CardHeader className="bg-blue-50 border-b">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center space-x-2">
-                      <CalendarIcon className="w-5 h-5 text-blue-600" />
-                      <h2 className="text-lg font-semibold text-gray-900">
-                        {format(weekStart, "dd/MM/yyyy")} - {format(weekEnd, "dd/MM/yyyy")}
-                      </h2>
-                    </div>
-                    
-                    {/* Week Navigation */}
-                    <div className="flex items-center space-x-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => navigateWeek('prev')}
-                      >
-                        ← Previous
-                      </Button>
-                      
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" size="sm">
-                            <CalendarIcon className="w-4 h-4 mr-2" />
-                            Select Week
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={currentWeek}
-                            onSelect={handleCalendarSelect}
-                            initialFocus
-                            className="p-3 pointer-events-auto"
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => navigateWeek('next')}
-                      >
-                        Next →
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-4">
-                    <div className="text-sm text-gray-600">
-                      {format(currentWeek, "yyyy")} - Week {format(currentWeek, "w")}
-                    </div>
-                    {isOverWeeklyLimit && (
-                      <div className="flex items-center text-red-600 text-sm">
-                        <AlertTriangle className="w-4 h-4 mr-1" />
-                        Over 40h limit
-                      </div>
-                    )}
-                  </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-7 gap-2 text-center text-sm">
+            {weekDates.map((date, index) => (
+              <div key={index} className="p-2 border rounded">
+                <div className="font-medium">
+                  {date.toLocaleDateString('en-US', { weekday: 'short' })}
                 </div>
-              </CardHeader>
-
-              <CardContent className="p-0">
-                {/* Validation Errors */}
-                {Object.keys(validationErrors).length > 0 && (
-                  <div className="bg-red-50 border-l-4 border-red-400 p-4 m-4">
-                    <div className="flex">
-                      <AlertTriangle className="w-5 h-5 text-red-400" />
-                      <div className="ml-3">
-                        <h3 className="text-sm font-medium text-red-800">Validation Errors:</h3>
-                        <div className="mt-2 text-sm text-red-700">
-                          {Object.values(validationErrors).map((error, index) => (
-                            <div key={index}>• {error}</div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Time Entry Table */}
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-gray-50 border-b">
-                        <th className="text-left p-4 font-medium text-gray-900 border-r">PROJECTS/TASKS</th>
-                        {weekDays.map((day) => (
-                          <th key={day.key} className="text-center p-4 font-medium text-gray-900 border-r min-w-[120px]">
-                            <div>{day.label}</div>
-                            <div className="text-xs text-gray-500 font-normal">{day.date}</div>
-                          </th>
-                        ))}
-                        <th className="text-center p-4 font-medium text-gray-900">TOTAL</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Object.keys(timeEntries).map((project, index) => (
-                        <tr key={project} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                          <td className={`p-4 font-medium border-r ${
-                            project === "Leave/Holiday" ? "text-orange-600" : "text-gray-900"
-                          }`}>
-                            {project}
-                          </td>
-                          {weekDays.map((day) => {
-                            const isLeaveProject = project === "Leave/Holiday";
-                            const isLeaveDay = parseFloat(timeEntries["Leave/Holiday"][day.key as keyof typeof timeEntries.Website]) > 0;
-                            const isDisabled = !isLeaveProject && isLeaveDay;
-                            
-                            return (
-                              <td key={day.key} className="p-2 border-r">
-                                <Input
-                                  type={isLeaveProject ? "checkbox" : "number"}
-                                  step={isLeaveProject ? undefined : "0.5"}
-                                  min={isLeaveProject ? undefined : "0"}
-                                  max={isLeaveProject ? undefined : "8"}
-                                  value={isLeaveProject ? undefined : timeEntries[project as keyof typeof timeEntries][day.key as keyof typeof timeEntries.Website]}
-                                  checked={isLeaveProject ? parseFloat(timeEntries[project as keyof typeof timeEntries][day.key as keyof typeof timeEntries.Website]) > 0 : undefined}
-                                  onChange={(e) => {
-                                    if (isLeaveProject) {
-                                      handleTimeChange(project, day.key, e.target.checked ? "8" : "0");
-                                    } else {
-                                      handleTimeChange(project, day.key, e.target.value);
-                                    }
-                                  }}
-                                  disabled={isDisabled}
-                                  className={cn(
-                                    "w-full text-center border-gray-300",
-                                    isLeaveProject && "w-5 h-5 mx-auto",
-                                    isDisabled && "bg-gray-100 cursor-not-allowed",
-                                    validationErrors[`${project}-${day.key}`] && "border-red-500"
-                                  )}
-                                  placeholder={isLeaveProject ? undefined : "0.00"}
-                                />
-                              </td>
-                            );
-                          })}
-                          <td className="p-4 text-center font-medium text-gray-900">
-                            {project === "Leave/Holiday" ? 
-                              `${Object.values(timeEntries[project]).filter(v => parseFloat(v as string) > 0).length} days` :
-                              calculateProjectTotal(project)
-                            }
-                          </td>
-                        </tr>
-                      ))}
-                      
-                      {/* Total Hours Row */}
-                      <tr className={`border-t-2 ${isOverWeeklyLimit ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'}`}>
-                        <td className="p-4 font-bold text-gray-900 border-r">TOTAL HOURS</td>
-                        {weekDays.map((day) => (
-                          <td key={day.key} className={`p-4 text-center font-bold border-r ${
-                            validationErrors[`day-${day.key}`] ? 'text-red-600' : 'text-gray-900'
-                          }`}>
-                            {calculateDayTotal(day.key)}
-                          </td>
-                        ))}
-                        <td className={`p-4 text-center font-bold ${
-                          isOverWeeklyLimit ? 'text-red-600' : 'text-gray-900'
-                        }`}>
-                          {calculateGrandTotal()}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                <div className="text-xs text-muted-foreground">
+                  {date.getDate()}
                 </div>
-
-                {/* Comment Section */}
-                <div className="p-6 border-t bg-gray-50">
-                  <div className="space-y-2">
-                    <label htmlFor="comment" className="block text-sm font-medium text-gray-700">
-                      Comment:
-                    </label>
-                    <Textarea
-                      id="comment"
-                      value={comment}
-                      onChange={(e) => setComment(e.target.value)}
-                      placeholder="Please enter the comments"
-                      className="w-full h-24 resize-none"
-                      maxLength={255}
-                    />
-                    <div className="text-right text-xs text-gray-500">
-                      {comment.length} / 255
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex justify-end space-x-3 mt-4">
-                    <Button 
-                      onClick={handleSave}
-                      variant="outline"
-                      className="px-6"
-                    >
-                      Save
-                    </Button>
-                    <Button 
-                      onClick={handleSubmit}
-                      className="px-6 bg-blue-600 hover:bg-blue-700"
-                      disabled={Object.keys(validationErrors).length > 0}
-                    >
-                      Submit
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+            ))}
           </div>
-        </main>
-      </div>
-    </SidebarProvider>
+        </CardContent>
+      </Card>
+
+      {/* Add New Entry */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Plus className="h-5 w-5" />
+            <span>Add Time Entry</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="task">Task Name</Label>
+              <Input
+                id="task"
+                value={newEntry.task_name}
+                onChange={(e) => setNewEntry(prev => ({ ...prev, task_name: e.target.value }))}
+                placeholder="Enter task description"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="hours">Hours</Label>
+              <Input
+                id="hours"
+                type="number"
+                step="0.5"
+                min="0"
+                max="24"
+                value={newEntry.hours}
+                onChange={(e) => setNewEntry(prev => ({ ...prev, hours: e.target.value }))}
+                placeholder="0.0"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="project">Project (Optional)</Label>
+              <Select 
+                value={newEntry.project_id} 
+                onValueChange={(value) => setNewEntry(prev => ({ ...prev, project_id: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select project" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No project</SelectItem>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-end">
+              <Button onClick={handleAddEntry} className="w-full">
+                <Save className="w-4 h-4 mr-2" />
+                Add Entry
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Time Entries Table */}
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle className="flex items-center space-x-2">
+              <Clock className="h-5 w-5" />
+              <span>Time Entries</span>
+            </CardTitle>
+            <div className="text-sm font-medium">
+              Total: {weeklyTotal.toFixed(1)} hours
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {timeEntries.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No time entries for this week. Add your first entry above.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Task</TableHead>
+                  <TableHead>Hours</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {timeEntries.map((entry) => (
+                  <TableRow key={entry.id}>
+                    <TableCell>
+                      {new Date(entry.entry_date).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      {entry.is_leave ? (
+                        <span className="italic text-orange-600">Leave</span>
+                      ) : (
+                        entry.task_name
+                      )}
+                    </TableCell>
+                    <TableCell>{entry.hours}</TableCell>
+                    <TableCell>
+                      <Badge variant={
+                        entry.status === 'approved' ? 'default' :
+                        entry.status === 'rejected' ? 'destructive' : 'secondary'
+                      }>
+                        {entry.status}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
