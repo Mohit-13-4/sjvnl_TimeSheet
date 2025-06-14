@@ -96,9 +96,27 @@ const WeeklyTimesheet = () => {
     }
   };
 
-  // Update hours for a project and day
+  // Update hours for a project and day with 8-hour daily limit
   const updateHours = (projectId: string, day: string, hours: string) => {
     const numericHours = parseFloat(hours) || 0;
+    
+    // Calculate current total for the day excluding this project
+    const currentDayTotal = projects.reduce((total, project) => {
+      if (project.id === projectId) return total;
+      return total + (weeklyHours[project.id]?.[day] || 0);
+    }, 0);
+    
+    // Check if adding these hours would exceed 8 hours per day
+    const newTotal = currentDayTotal + numericHours;
+    if (newTotal > 8) {
+      toast({
+        title: "Daily Limit Exceeded",
+        description: `Cannot exceed 8 hours per day. Current total: ${currentDayTotal.toFixed(1)} hours. Maximum you can add: ${(8 - currentDayTotal).toFixed(1)} hours.`,
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setWeeklyHours(prev => ({
       ...prev,
       [projectId]: {
