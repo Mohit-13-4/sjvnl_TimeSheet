@@ -1,58 +1,47 @@
 
 import { useState, useEffect } from "react";
-import { useAuth, AuthProvider } from "@/hooks/useAuth";
-import AuthPage from "@/components/AuthPage";
-import ForgotPasswordPage from "@/components/ForgotPasswordPage";
-import AdminDashboard from "@/components/AdminDashboard";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import AuthPage from "@/components/AuthPage";
 import Dashboard from "@/components/Dashboard";
+import AdminDashboard from "@/components/AdminDashboard";
 import TimeTracker from "@/components/TimeTracker";
+import WeeklyTimesheet from "@/components/WeeklyTimesheet";
 
-const IndexContent = () => {
+const MainApp = () => {
   const { user, profile, loading } = useAuth();
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [currentView, setCurrentView] = useState("dashboard");
+  const [currentView, setCurrentView] = useState("");
 
   // Set initial view based on user role
   useEffect(() => {
-    if (profile?.role) {
+    if (profile && !currentView) {
       console.log('Setting initial view for role:', profile.role);
       if (profile.role === 'admin' || profile.role === 'super_admin') {
-        setCurrentView("dashboard"); // Admin lands on dashboard
-      } else if (profile.role === 'employee') {
-        setCurrentView("timesheet"); // Employee lands on timesheet
+        setCurrentView('dashboard');
+      } else {
+        setCurrentView('timesheet');
       }
     }
-  }, [profile?.role]);
+  }, [profile, currentView]);
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
       </div>
     );
   }
 
   if (!user) {
-    if (showForgotPassword) {
-      return (
-        <ForgotPasswordPage 
-          onBack={() => setShowForgotPassword(false)}
-        />
-      );
-    }
-    return (
-      <AuthPage 
-        onAuthSuccess={() => {
-          // Initial view will be set by the useEffect above based on role
-        }}
-      />
-    );
+    return <AuthPage />;
   }
 
-  const renderCurrentView = () => {
-    console.log('Rendering view:', currentView, 'Profile role:', profile?.role);
+  const renderContent = () => {
+    console.log('Rendering content for view:', currentView, 'Profile role:', profile?.role);
     
     switch (currentView) {
       case "dashboard":
@@ -60,65 +49,26 @@ const IndexContent = () => {
       case "admin-dashboard":
         return <AdminDashboard />;
       case "timesheet":
-        return <TimeTracker userRole={profile?.role === 'admin' || profile?.role === 'super_admin' ? "Admin" : "Employee"} onLogout={() => {}} />;
+        return <WeeklyTimesheet />;
+      case "time-tracker":
+        return <TimeTracker />;
       case "projects":
-        return (
-          <div className="p-6">
-            <h2 className="text-2xl font-bold mb-4">
-              {profile?.role === 'admin' || profile?.role === 'super_admin' ? 'All Projects' : 'My Projects'}
-            </h2>
-            <p>
-              {profile?.role === 'admin' || profile?.role === 'super_admin'
-                ? 'Manage all company projects and assignments.' 
-                : 'View your assigned projects and tasks.'}
-            </p>
-          </div>
-        );
-      case "reports":
-        return (
-          <div className="p-6">
-            <h2 className="text-2xl font-bold mb-4">Reports</h2>
-            <p>
-              {profile?.role === 'admin' || profile?.role === 'super_admin'
-                ? 'View comprehensive reports and analytics for all employees.' 
-                : 'View your time tracking reports and performance metrics.'}
-            </p>
-          </div>
-        );
+        return <div>Projects View</div>;
       case "employees":
-        if (profile?.role === 'admin' || profile?.role === 'super_admin') {
-          return (
-            <div className="p-6">
-              <h2 className="text-2xl font-bold mb-4">Employee Management</h2>
-              <p>Manage employee accounts, roles, and permissions.</p>
-            </div>
-          );
-        }
-        return <Dashboard onViewChange={setCurrentView} />;
+        return <div>Employee Management View</div>;
+      case "reports":
+        return <div>Reports View</div>;
       case "profile":
-        return (
-          <div className="p-6">
-            <h2 className="text-2xl font-bold mb-4">Profile</h2>
-            <div className="space-y-2">
-              <p><strong>Name:</strong> {profile?.full_name}</p>
-              <p><strong>Employee ID:</strong> {profile?.employee_id}</p>
-              <p><strong>Role:</strong> {profile?.role?.toUpperCase()}</p>
-            </div>
-          </div>
-        );
+        return <div>Profile View</div>;
       case "settings":
-        return (
-          <div className="p-6">
-            <h2 className="text-2xl font-bold mb-4">Settings</h2>
-            <p>
-              {profile?.role === 'admin' || profile?.role === 'super_admin'
-                ? 'Configure system settings and preferences.' 
-                : 'Manage your account settings and preferences.'}
-            </p>
-          </div>
-        );
+        return <div>Settings View</div>;
       default:
-        return <Dashboard onViewChange={setCurrentView} />;
+        // Default based on role if no view is set
+        if (profile?.role === 'admin' || profile?.role === 'super_admin') {
+          return <Dashboard onViewChange={setCurrentView} />;
+        } else {
+          return <WeeklyTimesheet />;
+        }
     }
   };
 
@@ -126,11 +76,9 @@ const IndexContent = () => {
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
         <AppSidebar currentView={currentView} onViewChange={setCurrentView} />
-        <SidebarInset className="flex-1">
-          <main className="p-6">
-            {renderCurrentView()}
-          </main>
-        </SidebarInset>
+        <main className="flex-1 p-6 overflow-auto">
+          {renderContent()}
+        </main>
       </div>
     </SidebarProvider>
   );
@@ -139,7 +87,7 @@ const IndexContent = () => {
 const Index = () => {
   return (
     <AuthProvider>
-      <IndexContent />
+      <MainApp />
     </AuthProvider>
   );
 };
