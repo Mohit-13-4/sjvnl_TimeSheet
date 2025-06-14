@@ -38,17 +38,18 @@ const WeeklyTimesheet = () => {
   const [leaveStatus, setLeaveStatus] = useState<LeaveStatus>({});
   const [comment, setComment] = useState("");
 
-  const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-  // Get the start of the week (Sunday)
+  // Get the start of the week (Monday)
   const getWeekStart = (date: Date) => {
     const d = new Date(date);
     const day = d.getDay();
-    d.setDate(d.getDate() - day);
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is Sunday
+    d.setDate(diff);
     return d;
   };
 
-  // Get week dates
+  // Get week dates starting from Monday
   const getWeekDates = () => {
     const weekStart = getWeekStart(currentWeek);
     return daysOfWeek.map((_, index) => {
@@ -192,6 +193,23 @@ const WeeklyTimesheet = () => {
         </CardContent>
       </Card>
 
+      {/* Working Hours Info */}
+      <Card className="bg-blue-50">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between text-sm">
+            <div className="text-blue-700">
+              <span className="font-medium">Working Hours:</span> 8 hours per day
+            </div>
+            <div className="text-blue-700">
+              <span className="font-medium">Weekly Target:</span> 40 hours
+            </div>
+            <div className="text-blue-700">
+              <span className="font-medium">Current Total:</span> {getGrandTotal().toFixed(2)} hours
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Timesheet Grid */}
       <Card>
         <CardContent className="p-0">
@@ -204,7 +222,7 @@ const WeeklyTimesheet = () => {
                     <th key={index} className="text-center p-4 font-medium min-w-[120px]">
                       <div>{daysOfWeek[index]}</div>
                       <div className="text-sm text-gray-500 font-normal">
-                        Jun {date.getDate()}
+                        {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </div>
                     </th>
                   ))}
@@ -221,7 +239,7 @@ const WeeklyTimesheet = () => {
                           type="number"
                           step="0.5"
                           min="0"
-                          max="24"
+                          max="8"
                           value={weeklyHours[project.id]?.[day] || ''}
                           onChange={(e) => updateHours(project.id, day, e.target.value)}
                           className="text-center"

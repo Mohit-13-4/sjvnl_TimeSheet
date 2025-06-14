@@ -63,7 +63,7 @@ export function AppSidebar({ currentView, onViewChange }: AppSidebarProps) {
   };
 
   return (
-    <Sidebar>
+    <Sidebar collapsible="offcanvas">
       <SidebarHeader className="p-4">
         <div className="flex items-center space-x-2">
           <div className="w-8 h-8 bg-blue-500 rounded flex items-center justify-center">
