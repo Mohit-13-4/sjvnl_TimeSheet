@@ -36,6 +36,8 @@ const AdminPage = () => {
   }
 
   const renderContent = () => {
+    console.log('Admin Page - Rendering view:', currentView);
+    
     switch (currentView) {
       case "dashboard":
         return <Dashboard onViewChange={setCurrentView} />;
