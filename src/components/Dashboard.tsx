@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,7 +25,7 @@ interface DashboardProps {
   onViewChange: (view: string) => void;
 }
 
-const Dashboard = ({ onViewChange }: DashboardProps) => {
+const Dashboard = ({ onViewChange }: { onViewChange: (v: string) => void }) => {
   const { profile } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     totalEmployees: 0,
@@ -144,7 +143,19 @@ const Dashboard = ({ onViewChange }: DashboardProps) => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="w-full h-full space-y-8">
+      <div className="relative bg-gradient-to-r from-primary to-secondary shadow-inner rounded-lg flex flex-col md:flex-row items-center p-6 md:space-x-8 mb-8 overflow-hidden">
+        <img src="https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?auto=format&fit=crop&w=400&q=80"
+          alt="Work hero"
+          className="w-32 h-32 rounded-lg object-cover mb-4 md:mb-0 md:mr-8 border-4 border-background shadow-lg"
+        />
+        <div>
+          <h2 className="text-3xl md:text-4xl font-bold text-background drop-shadow-sm mb-2">Welcome to Your Dashboard</h2>
+          <p className="text-lg text-background/80">
+            Keep track of your work, projects and more — all in one place.
+          </p>
+        </div>
+      </div>
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-bold tracking-tight">
           {isAdmin ? 'Admin Dashboard' : 'Employee Dashboard'}
