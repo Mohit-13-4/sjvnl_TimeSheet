@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Project {
   id: string;
@@ -30,10 +32,8 @@ interface LeaveStatus {
 const WeeklyTimesheet = () => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
-  const [projects, setProjects] = useState<Project[]>([
-    { id: "1", name: "Website", allocated_hours: 40 },
-    { id: "2", name: "Web Page", allocated_hours: 30 }
-  ]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [weeklyHours, setWeeklyHours] = useState<WeeklyHours>({});
   const [leaveStatus, setLeaveStatus] = useState<LeaveStatus>({});
@@ -44,6 +44,46 @@ const WeeklyTimesheet = () => {
 
   // Check if user is admin
   const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
+
+  // Fetch projects assigned to the current user
+  useEffect(() => {
+    const fetchAssignedProjects = async () => {
+      if (!profile?.id || isAdmin) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('id, name, allocated_hours')
+          .eq('assigned_to', profile.id)
+          .eq('status', 'active');
+
+        if (error) {
+          console.error('Error fetching projects:', error);
+          toast({
+            title: "Error",
+            description: "Failed to fetch assigned projects",
+            variant: "destructive"
+          });
+        } else {
+          setProjects(data || []);
+        }
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch assigned projects",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAssignedProjects();
+  }, [profile, isAdmin, toast]);
 
   // Get the start of the week (Monday)
   const getWeekStart = (date: Date) => {
@@ -194,6 +234,22 @@ const WeeklyTimesheet = () => {
 
   const weekDates = getWeekDates();
 
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <SidebarTrigger />
+            <h1 className="text-2xl font-bold">Timesheet</h1>
+          </div>
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -203,7 +259,7 @@ const WeeklyTimesheet = () => {
           <h1 className="text-2xl font-bold">Timesheet</h1>
         </div>
         <div className="flex items-center space-x-2 text-sm text-gray-600">
-          <span>Welcome, {profile?.full_name || 'Admin'}</span>
+          <span>Welcome, {profile?.full_name || 'User'}</span>
           <Button variant="ghost" size="sm">
             Logout
           </Button>
@@ -270,123 +326,147 @@ const WeeklyTimesheet = () => {
         </CardContent>
       </Card>
 
-      {/* Timesheet Grid */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="text-left p-4 font-medium">PROJECTS/TASKS</th>
-                  {weekDates.map((date, index) => (
-                    <th key={index} className="text-center p-4 font-medium min-w-[120px]">
-                      <div>{daysOfWeek[index]}</div>
-                      <div className="text-sm text-gray-500 font-normal">
-                        {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                      </div>
-                    </th>
-                  ))}
-                  <th className="text-center p-4 font-medium">TOTAL</th>
-                </tr>
-              </thead>
-              <tbody>
-                {projects.map((project) => (
-                  <tr key={project.id} className="border-b">
-                    <td className="p-4 font-medium">{project.name}</td>
-                    {daysOfWeek.map((day) => (
-                      <td key={day} className="p-2">
-                        {isAdmin ? (
-                          <div className="text-center p-2 text-gray-400 italic">
-                            View Only
-                          </div>
-                        ) : (
-                          <Input
-                            type="number"
-                            step="0.5"
-                            min="0"
-                            max="8"
-                            value={weeklyHours[project.id]?.[day] || ''}
-                            onChange={(e) => updateHours(project.id, day, e.target.value)}
-                            className="text-center"
-                            placeholder="0.00"
-                          />
-                        )}
-                      </td>
-                    ))}
-                    <td className="p-4 text-center font-medium">
-                      {getProjectTotal(project.id).toFixed(2)}
-                    </td>
-                  </tr>
-                ))}
-                
-                {/* Leave/Holiday Row */}
-                <tr className="border-b bg-orange-50">
-                  <td className="p-4 font-medium text-orange-600">Leave/Holiday</td>
-                  {daysOfWeek.map((day) => (
-                    <td key={day} className="p-4 text-center">
-                      {isAdmin ? (
-                        <div className="text-gray-400 italic">View Only</div>
-                      ) : (
-                        <Checkbox
-                          checked={leaveStatus[day] || false}
-                          onCheckedChange={() => toggleLeave(day)}
-                        />
-                      )}
-                    </td>
-                  ))}
-                  <td className="p-4 text-center font-medium text-orange-600">
-                    {getLeaveCount()} days
-                  </td>
-                </tr>
-
-                {/* Total Hours Row */}
-                <tr className="border-b bg-gray-50 font-bold">
-                  <td className="p-4">TOTAL HOURS</td>
-                  {daysOfWeek.map((day) => (
-                    <td key={day} className="p-4 text-center">
-                      {getDayTotal(day).toFixed(2)}
-                    </td>
-                  ))}
-                  <td className="p-4 text-center">
-                    {getGrandTotal().toFixed(2)}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Comment Section */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Comment:</label>
-            <Textarea
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="Please enter the comments"
-              className="min-h-[100px]"
-              maxLength={255}
-              disabled={isAdmin}
-            />
-            <div className="text-right text-sm text-gray-500">
-              {comment.length} / 255
+      {/* No Projects Message */}
+      {!isAdmin && projects.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No Projects Assigned
+              </h3>
+              <p className="text-gray-500">
+                No projects have been assigned to you yet. Please contact your administrator.
+              </p>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Timesheet Grid */}
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b bg-gray-50">
+                      <th className="text-left p-4 font-medium">PROJECTS/TASKS</th>
+                      {weekDates.map((date, index) => (
+                        <th key={index} className="text-center p-4 font-medium min-w-[120px]">
+                          <div>{daysOfWeek[index]}</div>
+                          <div className="text-sm text-gray-500 font-normal">
+                            {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </div>
+                        </th>
+                      ))}
+                      <th className="text-center p-4 font-medium">TOTAL</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {projects.map((project) => (
+                      <tr key={project.id} className="border-b">
+                        <td className="p-4 font-medium">{project.name}</td>
+                        {daysOfWeek.map((day) => (
+                          <td key={day} className="p-2">
+                            {isAdmin ? (
+                              <div className="text-center p-2 text-gray-400 italic">
+                                View Only
+                              </div>
+                            ) : (
+                              <Input
+                                type="number"
+                                step="0.5"
+                                min="0"
+                                max="8"
+                                value={weeklyHours[project.id]?.[day] || ''}
+                                onChange={(e) => updateHours(project.id, day, e.target.value)}
+                                className="text-center"
+                                placeholder="0.00"
+                              />
+                            )}
+                          </td>
+                        ))}
+                        <td className="p-4 text-center font-medium">
+                          {getProjectTotal(project.id).toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                    
+                    {/* Leave/Holiday Row */}
+                    {projects.length > 0 && (
+                      <tr className="border-b bg-orange-50">
+                        <td className="p-4 font-medium text-orange-600">Leave/Holiday</td>
+                        {daysOfWeek.map((day) => (
+                          <td key={day} className="p-4 text-center">
+                            {isAdmin ? (
+                              <div className="text-gray-400 italic">View Only</div>
+                            ) : (
+                              <Checkbox
+                                checked={leaveStatus[day] || false}
+                                onCheckedChange={() => toggleLeave(day)}
+                              />
+                            )}
+                          </td>
+                        ))}
+                        <td className="p-4 text-center font-medium text-orange-600">
+                          {getLeaveCount()} days
+                        </td>
+                      </tr>
+                    )}
 
-      {/* Action Buttons - Only show for non-admin users */}
-      {!isAdmin && (
-        <div className="flex justify-end space-x-4">
-          <Button variant="outline" onClick={handleSave}>
-            Save
-          </Button>
-          <Button onClick={handleSubmit}>
-            Submit
-          </Button>
-        </div>
+                    {/* Total Hours Row */}
+                    {projects.length > 0 && (
+                      <tr className="border-b bg-gray-50 font-bold">
+                        <td className="p-4">TOTAL HOURS</td>
+                        {daysOfWeek.map((day) => (
+                          <td key={day} className="p-4 text-center">
+                            {getDayTotal(day).toFixed(2)}
+                          </td>
+                        ))}
+                        <td className="p-4 text-center">
+                          {getGrandTotal().toFixed(2)}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Comment Section */}
+          {projects.length > 0 && (
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Comment:</label>
+                  <Textarea
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    placeholder="Please enter the comments"
+                    className="min-h-[100px]"
+                    maxLength={255}
+                    disabled={isAdmin}
+                  />
+                  <div className="text-right text-sm text-gray-500">
+                    {comment.length} / 255
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Action Buttons - Only show for non-admin users with projects */}
+          {!isAdmin && projects.length > 0 && (
+            <div className="flex justify-end space-x-4">
+              <Button variant="outline" onClick={handleSave}>
+                Save
+              </Button>
+              <Button onClick={handleSubmit}>
+                Submit
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
