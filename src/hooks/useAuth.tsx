@@ -1,4 +1,3 @@
-
 import { useState, useEffect, createContext, useContext } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,13 +43,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // If profile doesn't exist, create a default one
         if (error.code === 'PGRST116') {
           console.log('Profile not found, creating default profile');
+          
+          // Check if this is the first user (should be admin)
+          const { count } = await supabase
+            .from('profiles')
+            .select('*', { count: 'exact', head: true });
+          
+          const isFirstUser = (count || 0) === 0;
+          const defaultRole = isFirstUser ? 'admin' : 'employee';
+          
           const { data: newProfile, error: insertError } = await supabase
             .from('profiles')
             .insert({
               id: userId,
               employee_id: `EMP${Date.now()}`,
               full_name: 'User',
-              role: 'employee'
+              role: defaultRole
             })
             .select()
             .single();
@@ -60,7 +68,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             return null;
           }
           
-          console.log('Created new profile:', newProfile);
+          console.log('Created new profile:', newProfile, 'Role:', defaultRole);
           return newProfile as Profile;
         }
         return null;

@@ -5,7 +5,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import AuthPage from "@/components/AuthPage";
 import Dashboard from "@/components/Dashboard";
-import AdminDashboard from "@/components/AdminDashboard";
+import AdminPage from "@/components/AdminPage";
 import TimeTracker from "@/components/TimeTracker";
 import WeeklyTimesheet from "@/components/WeeklyTimesheet";
 import ProjectsPage from "@/components/ProjectsPage";
@@ -18,14 +18,22 @@ const MainApp = () => {
   const { user, profile, loading } = useAuth();
   const [currentView, setCurrentView] = useState("");
 
+  // Check if user is admin
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
+
   // Set initial view based on user role - but only after profile is loaded
   useEffect(() => {
     if (profile && !currentView) {
       console.log('Setting initial view for role:', profile.role);
-      // Both admin and employee start with dashboard view
-      setCurrentView('dashboard');
+      // Admin users get redirected to admin panel
+      if (isAdmin) {
+        setCurrentView('admin-panel');
+      } else {
+        // Regular employees start with dashboard view
+        setCurrentView('dashboard');
+      }
     }
-  }, [profile, currentView]);
+  }, [profile, currentView, isAdmin]);
 
   // Reset view when user changes
   useEffect(() => {
@@ -50,14 +58,17 @@ const MainApp = () => {
     return <AuthPage />;
   }
 
+  // If admin user, show admin panel
+  if (isAdmin && currentView === 'admin-panel') {
+    return <AdminPage />;
+  }
+
   const renderContent = () => {
     console.log('Rendering content for view:', currentView, 'Profile role:', profile?.role);
     
     switch (currentView) {
       case "dashboard":
         return <Dashboard onViewChange={setCurrentView} />;
-      case "admin-dashboard":
-        return <AdminDashboard />;
       case "timesheet":
         return <WeeklyTimesheet />;
       case "time-tracker":
@@ -73,11 +84,12 @@ const MainApp = () => {
       case "settings":
         return <SettingsPage />;
       default:
-        // Default to dashboard for both admin and employee
+        // Default to dashboard for employee users
         return <Dashboard onViewChange={setCurrentView} />;
     }
   };
 
+  // Regular employee interface
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
