@@ -29,8 +29,8 @@ const MainApp = () => {
       if (isAdmin) {
         setCurrentView('admin-panel');
       } else {
-        // Regular employees start with dashboard view
-        setCurrentView('dashboard');
+        // Regular employees start with timesheet view
+        setCurrentView('timesheet');
       }
     }
   }, [profile, currentView, isAdmin]);
@@ -84,8 +84,8 @@ const MainApp = () => {
       case "settings":
         return <SettingsPage />;
       default:
-        // Default to dashboard for employee users
-        return <Dashboard onViewChange={setCurrentView} />;
+        // Default to timesheet for employee users
+        return <WeeklyTimesheet />;
     }
   };
 
