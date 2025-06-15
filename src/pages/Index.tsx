@@ -24,7 +24,7 @@ const MainApp = () => {
   // Set initial view based on user role - but only after profile is loaded
   useEffect(() => {
     if (profile && !currentView) {
-      console.log('Setting initial view for role:', profile.role, 'isAdmin:', isAdmin);
+      console.log('Setting initial view for role:', profile.role);
       // Admin users get redirected to admin panel
       if (isAdmin) {
         setCurrentView('admin-panel');

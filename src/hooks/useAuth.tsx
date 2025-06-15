@@ -1,4 +1,3 @@
-
 import { useState, useEffect, createContext, useContext } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -53,8 +52,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           const isFirstUser = (count || 0) === 0;
           const defaultRole = isFirstUser ? 'admin' : 'employee';
           
-          console.log('Creating profile with role:', defaultRole, 'Is first user:', isFirstUser);
-          
           const { data: newProfile, error: insertError } = await supabase
             .from('profiles')
             .insert({
@@ -71,7 +68,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             return null;
           }
           
-          console.log('Created new profile:', newProfile);
+          console.log('Created new profile:', newProfile, 'Role:', defaultRole);
           return newProfile as Profile;
         }
         return null;
