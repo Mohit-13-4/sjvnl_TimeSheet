@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -168,10 +167,28 @@ const WeeklyTimesheet = () => {
 
   // Toggle leave status
   const toggleLeave = (day: string) => {
+    const newLeaveStatus = !leaveStatus[day];
+    
     setLeaveStatus(prev => ({
       ...prev,
-      [day]: !prev[day]
+      [day]: newLeaveStatus
     }));
+
+    // If marking as leave, clear all hours for that day
+    if (newLeaveStatus) {
+      setWeeklyHours(prev => {
+        const updated = { ...prev };
+        projects.forEach(project => {
+          if (updated[project.id]) {
+            updated[project.id] = {
+              ...updated[project.id],
+              [day]: 0
+            };
+          }
+        });
+        return updated;
+      });
+    }
   };
 
   // Calculate daily totals
@@ -381,6 +398,7 @@ const WeeklyTimesheet = () => {
                                 onChange={(e) => updateHours(project.id, day, e.target.value)}
                                 className="text-center"
                                 placeholder="0.00"
+                                disabled={leaveStatus[day]}
                               />
                             )}
                           </td>
