@@ -183,29 +183,35 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
   if (showForgotPassword) {
     return (
       <div className="min-h-screen flex">
-        {/* Left side - SJVN Building Image */}
+        {/* Left side - SJVN Building Image (60%) */}
         <div 
-          className="hidden lg:flex lg:w-1/2 bg-cover bg-center relative"
+          className="hidden lg:flex lg:w-3/5 bg-cover bg-center relative"
           style={{
             backgroundImage: `url('/lovable-uploads/1a548b06-9ce4-4626-bd36-f2f3fda3449d.png')`
           }}
         >
           <div className="absolute inset-0 bg-gradient-to-r from-teal-600/30 to-blue-600/30"></div>
           <div className="absolute top-8 left-8">
-            <div className="w-16 h-16 bg-white rounded-lg flex items-center justify-center shadow-lg">
-              <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-blue-600 rounded flex items-center justify-center">
-                <div className="text-white font-bold text-sm">SJVN</div>
-              </div>
+            <div className="w-20 h-20 bg-white rounded-lg flex items-center justify-center shadow-lg p-2">
+              <img 
+                src="https://sjvn.nic.in/assets/images/logo.png" 
+                alt="SJVN Logo" 
+                className="w-full h-full object-contain"
+              />
             </div>
           </div>
         </div>
 
-        {/* Right side - Forgot Password Form */}
-        <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gradient-to-br from-gray-50 to-teal-50">
+        {/* Right side - Forgot Password Form (40%) */}
+        <div className="w-full lg:w-2/5 flex items-center justify-center p-8 bg-gradient-to-br from-gray-50 to-teal-50">
           <Card className="w-full max-w-md shadow-xl border-0 backdrop-blur-sm bg-white/90">
             <CardHeader className="text-center space-y-4">
-              <div className="mx-auto w-12 h-12 bg-gradient-to-br from-teal-500 to-blue-600 rounded-lg flex items-center justify-center shadow-lg">
-                <div className="text-white font-bold text-xs">SJVN</div>
+              <div className="mx-auto w-16 h-16 bg-white rounded-lg flex items-center justify-center shadow-lg p-2">
+                <img 
+                  src="https://sjvn.nic.in/assets/images/logo.png" 
+                  alt="SJVN Logo" 
+                  className="w-full h-full object-contain"
+                />
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Reset Password</h1>
@@ -257,29 +263,35 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left side - SJVN Building Image */}
+      {/* Left side - SJVN Building Image (60%) */}
       <div 
-        className="hidden lg:flex lg:w-1/2 bg-cover bg-center relative"
+        className="hidden lg:flex lg:w-3/5 bg-cover bg-center relative"
         style={{
           backgroundImage: `url('/lovable-uploads/1a548b06-9ce4-4626-bd36-f2f3fda3449d.png')`
         }}
       >
         <div className="absolute inset-0 bg-gradient-to-r from-teal-600/30 to-blue-600/30"></div>
         <div className="absolute top-8 left-8">
-          <div className="w-16 h-16 bg-white rounded-lg flex items-center justify-center shadow-lg">
-            <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-blue-600 rounded flex items-center justify-center">
-              <div className="text-white font-bold text-sm">SJVN</div>
-            </div>
+          <div className="w-20 h-20 bg-white rounded-lg flex items-center justify-center shadow-lg p-2">
+            <img 
+              src="https://sjvn.nic.in/assets/images/logo.png" 
+              alt="SJVN Logo" 
+              className="w-full h-full object-contain"
+            />
           </div>
         </div>
       </div>
 
-      {/* Right side - Auth Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gradient-to-br from-gray-50 to-teal-50">
+      {/* Right side - Auth Form (40%) */}
+      <div className="w-full lg:w-2/5 flex items-center justify-center p-8 bg-gradient-to-br from-gray-50 to-teal-50">
         <Card className="w-full max-w-md shadow-xl border-0 backdrop-blur-sm bg-white/90">
           <CardHeader className="text-center space-y-4">
-            <div className="mx-auto w-12 h-12 bg-gradient-to-br from-teal-500 to-blue-600 rounded-lg flex items-center justify-center shadow-lg">
-              <div className="text-white font-bold text-xs">SJVN</div>
+            <div className="mx-auto w-16 h-16 bg-white rounded-lg flex items-center justify-center shadow-lg p-2">
+              <img 
+                src="https://sjvn.nic.in/assets/images/logo.png" 
+                alt="SJVN Logo" 
+                className="w-full h-full object-contain"
+              />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">TimeTracker</h1>

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -73,10 +72,12 @@ const Navigation = ({ currentView, onViewChange }: NavigationProps) => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center space-x-4">
-            <div className="w-10 h-10 bg-blue-500 rounded flex items-center justify-center">
-              <div className="w-6 h-6 bg-white rounded flex items-center justify-center">
-                <div className="text-blue-500 font-bold text-xs">SJVN</div>
-              </div>
+            <div className="w-10 h-10 bg-white rounded flex items-center justify-center p-1">
+              <img 
+                src="https://sjvn.nic.in/assets/images/logo.png" 
+                alt="SJVN Logo" 
+                className="w-full h-full object-contain"
+              />
             </div>
             <div>
               <h1 className="text-xl font-bold text-gray-900">TimeTracker</h1>
