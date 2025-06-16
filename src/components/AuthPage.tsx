@@ -1,10 +1,12 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -24,10 +26,42 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
+  const [captcha, setCaptcha] = useState("");
+  const [captchaValue, setCaptchaValue] = useState("");
   const { toast } = useToast();
+
+  const generateCaptcha = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < 6; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setCaptchaValue(result);
+    setCaptcha(""); // Clear the input when captcha changes
+  };
+
+  // Generate initial captcha and set up auto-refresh
+  useEffect(() => {
+    generateCaptcha();
+    
+    // Change captcha every 30 seconds
+    const interval = setInterval(generateCaptcha, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (captcha !== captchaValue) {
+      toast({
+        title: "Captcha mismatch",
+        description: "Please enter the correct captcha",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -300,10 +334,32 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                     </button>
                   </div>
 
+                  <div className="space-y-2">
+                    <Label htmlFor="captcha">Enter Captcha</Label>
+                    <div className="flex gap-2 items-center">
+                      <div className="flex-1 flex gap-2">
+                        <div className="bg-gray-100 border rounded px-3 py-2 text-center font-mono text-sm flex-1">
+                          {captchaValue}
+                        </div>
+                        <Button type="button" variant="outline" size="sm" onClick={generateCaptcha}>
+                          <RefreshCw className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <Input
+                      id="captcha"
+                      type="text"
+                      placeholder="Type here"
+                      value={captcha}
+                      onChange={(e) => setCaptcha(e.target.value)}
+                      className="w-full"
+                    />
+                  </div>
+
                   <Button 
                     type="submit" 
                     className="w-full bg-blue-600 hover:bg-blue-700"
-                    disabled={isLoading}
+                    disabled={isLoading || !loginEmail || !loginPassword || !captcha}
                   >
                     {isLoading ? "Signing in..." : "Sign In"}
                   </Button>
