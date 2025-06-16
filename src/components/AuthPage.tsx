@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -188,27 +187,25 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
         <div 
           className="hidden lg:flex lg:w-1/2 bg-cover bg-center relative"
           style={{
-            backgroundImage: `url('/lovable-uploads/bcd649d2-2538-4209-bcd6-252828b86c63.png')`
+            backgroundImage: `url('/lovable-uploads/1a548b06-9ce4-4626-bd36-f2f3fda3449d.png')`
           }}
         >
-          <div className="absolute inset-0 bg-blue-900/20"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-teal-600/30 to-blue-600/30"></div>
           <div className="absolute top-8 left-8">
-            <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center">
-              <div className="w-10 h-10 bg-white rounded flex items-center justify-center">
-                <div className="text-blue-500 font-bold text-sm">SJVN</div>
+            <div className="w-16 h-16 bg-white rounded-lg flex items-center justify-center shadow-lg">
+              <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-blue-600 rounded flex items-center justify-center">
+                <div className="text-white font-bold text-sm">SJVN</div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Right side - Forgot Password Form */}
-        <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gray-50">
-          <Card className="w-full max-w-md shadow-lg">
+        <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gradient-to-br from-gray-50 to-teal-50">
+          <Card className="w-full max-w-md shadow-xl border-0 backdrop-blur-sm bg-white/90">
             <CardHeader className="text-center space-y-4">
-              <div className="mx-auto w-12 h-12 bg-blue-500 rounded flex items-center justify-center">
-                <div className="w-8 h-8 bg-white rounded flex items-center justify-center">
-                  <div className="text-blue-500 font-bold text-xs">SJVN</div>
-                </div>
+              <div className="mx-auto w-12 h-12 bg-gradient-to-br from-teal-500 to-blue-600 rounded-lg flex items-center justify-center shadow-lg">
+                <div className="text-white font-bold text-xs">SJVN</div>
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Reset Password</h1>
@@ -227,12 +224,13 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                     value={forgotEmail}
                     onChange={(e) => setForgotEmail(e.target.value)}
                     required
+                    className="border-gray-300 focus:border-teal-500 focus:ring-teal-500"
                   />
                 </div>
 
                 <Button 
                   type="submit" 
-                  className="w-full bg-blue-600 hover:bg-blue-700"
+                  className="w-full bg-gradient-to-r from-teal-600 to-blue-600 hover:from-teal-700 hover:to-blue-700 text-white shadow-lg"
                   disabled={isLoading}
                 >
                   {isLoading ? "Sending..." : "Send Reset Email"}
@@ -241,7 +239,7 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
 
               <Button 
                 variant="ghost" 
-                className="w-full mt-4"
+                className="w-full mt-4 text-teal-600 hover:text-teal-700 hover:bg-teal-50"
                 onClick={() => setShowForgotPassword(false)}
               >
                 Back to Login
@@ -263,27 +261,25 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
       <div 
         className="hidden lg:flex lg:w-1/2 bg-cover bg-center relative"
         style={{
-          backgroundImage: `url('/lovable-uploads/bcd649d2-2538-4209-bcd6-252828b86c63.png')`
+          backgroundImage: `url('/lovable-uploads/1a548b06-9ce4-4626-bd36-f2f3fda3449d.png')`
         }}
       >
-        <div className="absolute inset-0 bg-blue-900/20"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-teal-600/30 to-blue-600/30"></div>
         <div className="absolute top-8 left-8">
-          <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center">
-            <div className="w-10 h-10 bg-white rounded flex items-center justify-center">
-              <div className="text-blue-500 font-bold text-sm">SJVN</div>
+          <div className="w-16 h-16 bg-white rounded-lg flex items-center justify-center shadow-lg">
+            <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-blue-600 rounded flex items-center justify-center">
+              <div className="text-white font-bold text-sm">SJVN</div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Right side - Auth Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gray-50">
-        <Card className="w-full max-w-md shadow-lg">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gradient-to-br from-gray-50 to-teal-50">
+        <Card className="w-full max-w-md shadow-xl border-0 backdrop-blur-sm bg-white/90">
           <CardHeader className="text-center space-y-4">
-            <div className="mx-auto w-12 h-12 bg-blue-500 rounded flex items-center justify-center">
-              <div className="w-8 h-8 bg-white rounded flex items-center justify-center">
-                <div className="text-blue-500 font-bold text-xs">SJVN</div>
-              </div>
+            <div className="mx-auto w-12 h-12 bg-gradient-to-br from-teal-500 to-blue-600 rounded-lg flex items-center justify-center shadow-lg">
+              <div className="text-white font-bold text-xs">SJVN</div>
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">TimeTracker</h1>
@@ -293,9 +289,9 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
           
           <CardContent>
             <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 bg-gray-100">
+                <TabsTrigger value="login" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-blue-600 data-[state=active]:text-white">Login</TabsTrigger>
+                <TabsTrigger value="signup" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-blue-600 data-[state=active]:text-white">Sign Up</TabsTrigger>
               </TabsList>
               
               <TabsContent value="login">
@@ -309,6 +305,7 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
                       required
+                      className="border-gray-300 focus:border-teal-500 focus:ring-teal-500"
                     />
                   </div>
 
@@ -321,6 +318,7 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
                       required
+                      className="border-gray-300 focus:border-teal-500 focus:ring-teal-500"
                     />
                   </div>
 
@@ -328,7 +326,7 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                     <button
                       type="button"
                       onClick={() => setShowForgotPassword(true)}
-                      className="text-sm text-blue-600 hover:text-blue-800 underline"
+                      className="text-sm text-teal-600 hover:text-teal-800 underline"
                     >
                       Forgot Password?
                     </button>
@@ -338,10 +336,10 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                     <Label htmlFor="captcha">Enter Captcha</Label>
                     <div className="flex gap-2 items-center">
                       <div className="flex-1 flex gap-2">
-                        <div className="bg-gray-100 border rounded px-3 py-2 text-center font-mono text-sm flex-1">
+                        <div className="bg-gray-100 border rounded px-3 py-2 text-center font-mono text-sm flex-1 border-gray-300">
                           {captchaValue}
                         </div>
-                        <Button type="button" variant="outline" size="sm" onClick={generateCaptcha}>
+                        <Button type="button" variant="outline" size="sm" onClick={generateCaptcha} className="border-teal-500 text-teal-600 hover:bg-teal-50">
                           <RefreshCw className="w-4 h-4" />
                         </Button>
                       </div>
@@ -352,13 +350,13 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                       placeholder="Type here"
                       value={captcha}
                       onChange={(e) => setCaptcha(e.target.value)}
-                      className="w-full"
+                      className="w-full border-gray-300 focus:border-teal-500 focus:ring-teal-500"
                     />
                   </div>
 
                   <Button 
                     type="submit" 
-                    className="w-full bg-blue-600 hover:bg-blue-700"
+                    className="w-full bg-gradient-to-r from-teal-600 to-blue-600 hover:from-teal-700 hover:to-blue-700 text-white shadow-lg"
                     disabled={isLoading || !loginEmail || !loginPassword || !captcha}
                   >
                     {isLoading ? "Signing in..." : "Sign In"}
@@ -371,7 +369,7 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                   <div className="space-y-2">
                     <Label htmlFor="role-select">Role</Label>
                     <Select value={selectedRole} onValueChange={(value: "employee" | "admin") => setSelectedRole(value)}>
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger className="w-full border-gray-300 focus:border-teal-500 focus:ring-teal-500">
                         <SelectValue placeholder="Select your role" />
                       </SelectTrigger>
                       <SelectContent>
@@ -390,6 +388,7 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       required
+                      className="border-gray-300 focus:border-teal-500 focus:ring-teal-500"
                     />
                   </div>
 
@@ -404,6 +403,7 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                       value={employeeId}
                       onChange={(e) => setEmployeeId(e.target.value)}
                       required
+                      className="border-gray-300 focus:border-teal-500 focus:ring-teal-500"
                     />
                   </div>
 
@@ -416,6 +416,7 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                       value={signupEmail}
                       onChange={(e) => setSignupEmail(e.target.value)}
                       required
+                      className="border-gray-300 focus:border-teal-500 focus:ring-teal-500"
                     />
                   </div>
 
@@ -428,6 +429,7 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                       value={signupPassword}
                       onChange={(e) => setSignupPassword(e.target.value)}
                       required
+                      className="border-gray-300 focus:border-teal-500 focus:ring-teal-500"
                     />
                   </div>
 
@@ -440,12 +442,13 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       required
+                      className="border-gray-300 focus:border-teal-500 focus:ring-teal-500"
                     />
                   </div>
 
                   <Button 
                     type="submit" 
-                    className="w-full bg-blue-600 hover:bg-blue-700"
+                    className="w-full bg-gradient-to-r from-teal-600 to-blue-600 hover:from-teal-700 hover:to-blue-700 text-white shadow-lg"
                     disabled={isLoading}
                   >
                     {isLoading ? "Creating account..." : "Create Account"}
