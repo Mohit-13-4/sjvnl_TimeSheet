@@ -1,10 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { ChevronLeft, ChevronRight, Calendar, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, Trash2, X } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -26,6 +25,7 @@ interface TimeEntry {
   day: string;
   hours: number;
   isLeave?: boolean;
+  isHoliday?: boolean;
   leaveType?: 'half-day' | 'full-day';
 }
 
@@ -141,54 +141,62 @@ const WeeklyTimesheet = () => {
     }
   };
 
-  // Add new time entry
-  const addTimeEntry = (projectId: string, day: string) => {
-    if (isWeekend(day)) {
-      toast({
-        title: "Weekend Entry Not Allowed",
-        description: "Cannot add entries for weekends",
-        variant: "destructive"
-      });
-      return;
+  // Add new time entry for entire week
+  const addWeeklyTimeEntry = (value: string) => {
+    if (!value) return;
+
+    // Clear any existing entries first
+    setTimeEntries([]);
+
+    if (value.startsWith('leave-')) {
+      const leaveType = value.split('-')[1] as 'half-day' | 'full-day';
+      const hours = leaveType === 'full-day' ? 8 : 4;
+      
+      // Add leave entries for working days only
+      const newEntries = weekDays.map(day => ({
+        id: `leave-${day}-${Date.now()}`,
+        projectId: 'leave',
+        projectName: `Leave (${leaveType})`,
+        day,
+        hours,
+        isLeave: true,
+        leaveType
+      }));
+      
+      setTimeEntries(newEntries);
+    } else if (value === 'holiday') {
+      // Add holiday entries for working days only
+      const newEntries = weekDays.map(day => ({
+        id: `holiday-${day}-${Date.now()}`,
+        projectId: 'holiday',
+        projectName: 'Public Holiday',
+        day,
+        hours: 8,
+        isHoliday: true
+      }));
+      
+      setTimeEntries(newEntries);
+    } else {
+      // Regular project selection
+      const project = projects.find(p => p.id === value);
+      if (!project) return;
+
+      // Add project entries for working days only
+      const newEntries = weekDays.map(day => ({
+        id: `${value}-${day}-${Date.now()}`,
+        projectId: value,
+        projectName: project.name,
+        day,
+        hours: 0
+      }));
+      
+      setTimeEntries(newEntries);
     }
-
-    const project = projects.find(p => p.id === projectId);
-    if (!project && projectId !== 'leave') return;
-
-    const newEntry: TimeEntry = {
-      id: `${projectId}-${day}-${Date.now()}`,
-      projectId,
-      projectName: project ? project.name : 'Leave',
-      day,
-      hours: 0,
-      isLeave: projectId === 'leave'
-    };
-
-    setTimeEntries(prev => [...prev, newEntry]);
   };
 
-  // Add leave entry
-  const addLeaveEntry = (day: string, leaveType: 'half-day' | 'full-day') => {
-    if (isWeekend(day)) {
-      toast({
-        title: "Weekend Entry Not Allowed",
-        description: "Cannot add entries for weekends",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const newEntry: TimeEntry = {
-      id: `leave-${day}-${Date.now()}`,
-      projectId: 'leave',
-      projectName: `Leave (${leaveType})`,
-      day,
-      hours: leaveType === 'full-day' ? 8 : 4,
-      isLeave: true,
-      leaveType
-    };
-
-    setTimeEntries(prev => [...prev, newEntry]);
+  // Clear all entries (unselect)
+  const clearAllEntries = () => {
+    setTimeEntries([]);
   };
 
   // Update hours for an entry
@@ -370,49 +378,46 @@ const WeeklyTimesheet = () => {
           <Card>
             <CardContent className="p-6">
               <div className="space-y-6">
-                {/* Add Entry Section */}
-                {!isAdmin && (
-                  <div className="border-b pb-4">
-                    <h3 className="text-lg font-medium mb-4">Add Time Entry</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {weekDays.map((day) => (
-                        <div key={day} className="space-y-2">
-                          <label className="text-sm font-medium">{day}</label>
-                          <div className="space-y-2">
-                            <Select onValueChange={(value) => {
-                              if (value.startsWith('leave-')) {
-                                const leaveType = value.split('-')[1] as 'half-day' | 'full-day';
-                                addLeaveEntry(day, leaveType);
-                              } else {
-                                addTimeEntry(value, day);
-                              }
-                            }}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select project/leave" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {projects.map((project) => (
-                                  <SelectItem key={project.id} value={project.id}>
-                                    {project.name}
-                                  </SelectItem>
-                                ))}
-                                <SelectItem value="leave-half-day">Leave (Half Day)</SelectItem>
-                                <SelectItem value="leave-full-day">Leave (Full Day)</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                 {/* Entries Display */}
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
                       <tr className="border-b bg-gray-50">
-                        <th className="text-left p-4 font-medium">ENTRY</th>
+                        <th className="text-left p-4 font-medium min-w-[250px]">
+                          <div className="space-y-2">
+                            <div>ENTRY</div>
+                            {!isAdmin && (
+                              <div className="flex items-center space-x-2">
+                                <Select onValueChange={addWeeklyTimeEntry}>
+                                  <SelectTrigger className="bg-white">
+                                    <SelectValue placeholder="Select project/leave/holiday" />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-white border shadow-lg z-50">
+                                    {projects.map((project) => (
+                                      <SelectItem key={project.id} value={project.id}>
+                                        {project.name}
+                                      </SelectItem>
+                                    ))}
+                                    <SelectItem value="leave-half-day">Leave (Half Day)</SelectItem>
+                                    <SelectItem value="leave-full-day">Leave (Full Day)</SelectItem>
+                                    <SelectItem value="holiday">Public Holiday</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                {timeEntries.length > 0 && (
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={clearAllEntries}
+                                    className="text-red-600 hover:text-red-700"
+                                  >
+                                    <X className="w-4 h-4" />
+                                    Clear
+                                  </Button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </th>
                         {daysOfWeek.map((day, index) => (
                           <th key={index} className={`text-center p-4 font-medium min-w-[120px] ${isWeekend(day) ? 'bg-gray-200 text-gray-500' : ''}`}>
                             <div>{day}</div>
@@ -422,71 +427,78 @@ const WeeklyTimesheet = () => {
                             {isWeekend(day) && <div className="text-xs text-gray-400">FROZEN</div>}
                           </th>
                         ))}
-                        <th className="text-center p-4 font-medium">ACTIONS</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {daysOfWeek.map((day) => {
-                        const dayEntries = getDayEntries(day);
-                        return dayEntries.map((entry) => (
-                          <tr key={entry.id} className="border-b">
-                            <td className="p-4 font-medium">{entry.projectName}</td>
-                            {daysOfWeek.map((d) => (
-                              <td key={d} className={`p-2 ${isWeekend(d) ? 'bg-gray-100' : ''}`}>
-                                {d === day ? (
-                                  entry.isLeave ? (
-                                    <div className="text-center p-2 bg-orange-100 text-orange-700 rounded">
-                                      {entry.hours}h ({entry.leaveType})
-                                    </div>
-                                  ) : isAdmin ? (
-                                    <div className="text-center p-2 text-gray-400 italic">
-                                      View Only
-                                    </div>
+                      {timeEntries.length > 0 ? (
+                        weekDays.map((day) => {
+                          const dayEntries = getDayEntries(day);
+                          return dayEntries.map((entry) => (
+                            <tr key={entry.id} className="border-b">
+                              <td className="p-4 font-medium">{entry.projectName}</td>
+                              {daysOfWeek.map((d) => (
+                                <td key={d} className={`p-2 ${isWeekend(d) ? 'bg-gray-100' : ''}`}>
+                                  {d === day ? (
+                                    entry.isLeave || entry.isHoliday ? (
+                                      <div className={`text-center p-2 rounded ${
+                                        entry.isLeave ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
+                                      }`}>
+                                        {entry.hours}h {entry.leaveType ? `(${entry.leaveType})` : ''}
+                                      </div>
+                                    ) : isAdmin ? (
+                                      <div className="text-center p-2 text-gray-400 italic">
+                                        View Only
+                                      </div>
+                                    ) : (
+                                      <Input
+                                        type="number"
+                                        step="0.5"
+                                        min="0"
+                                        value={entry.hours || ''}
+                                        onChange={(e) => updateHours(entry.id, e.target.value)}
+                                        className="text-center"
+                                        placeholder="0.00"
+                                      />
+                                    )
                                   ) : (
-                                    <Input
-                                      type="number"
-                                      step="0.5"
-                                      min="0"
-                                      value={entry.hours || ''}
-                                      onChange={(e) => updateHours(entry.id, e.target.value)}
-                                      className="text-center"
-                                      placeholder="0.00"
-                                    />
-                                  )
-                                ) : (
-                                  <div className={`text-center p-2 ${isWeekend(d) ? 'text-gray-400' : ''}`}>
-                                    {isWeekend(d) ? 'FROZEN' : '-'}
-                                  </div>
-                                )}
-                              </td>
-                            ))}
-                            <td className="p-4 text-center">
-                              {!isAdmin && (
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
-                                  onClick={() => removeTimeEntry(entry.id)}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              )}
-                            </td>
-                          </tr>
-                        ));
-                      })}
+                                    <div className={`text-center p-2 ${isWeekend(d) ? 'text-gray-400' : ''}`}>
+                                      {isWeekend(d) ? 'FROZEN' : '-'}
+                                    </div>
+                                  )}
+                                </td>
+                              ))}
+                            </tr>
+                          ));
+                        })
+                      ) : (
+                        <tr>
+                          <td className="p-4 text-center text-gray-500 italic" colSpan={8}>
+                            No entries added yet. Select a project, leave, or holiday from the dropdown above.
+                          </td>
+                        </tr>
+                      )}
 
                       {/* Daily Totals Row */}
-                      <tr className="border-b bg-gray-50 font-bold">
-                        <td className="p-4">DAILY TOTALS</td>
-                        {daysOfWeek.map((day) => (
-                          <td key={day} className={`p-4 text-center ${isWeekend(day) ? 'bg-gray-200 text-gray-500' : ''}`}>
-                            {isWeekend(day) ? 'FROZEN' : getDayTotal(day).toFixed(1)}
+                      {timeEntries.length > 0 && (
+                        <tr className="border-b bg-gray-50 font-bold">
+                          <td className="p-4">DAILY TOTALS</td>
+                          {daysOfWeek.map((day) => (
+                            <td key={day} className={`p-4 text-center ${isWeekend(day) ? 'bg-gray-200 text-gray-500' : ''}`}>
+                              {isWeekend(day) ? 'FROZEN' : getDayTotal(day).toFixed(1)}
+                            </td>
+                          ))}
+                        </tr>
+                      )}
+
+                      {/* Weekly Total Row */}
+                      {timeEntries.length > 0 && (
+                        <tr className="bg-blue-50 font-bold">
+                          <td className="p-4">WEEKLY TOTAL</td>
+                          <td colSpan={7} className="p-4 text-center">
+                            {getWeeklyTotal().toFixed(1)}h
                           </td>
-                        ))}
-                        <td className="p-4 text-center">
-                          {getWeeklyTotal().toFixed(1)}h
-                        </td>
-                      </tr>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
