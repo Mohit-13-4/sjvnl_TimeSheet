@@ -1,15 +1,16 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, Trash2 } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Project {
@@ -18,14 +19,14 @@ interface Project {
   allocated_hours: number;
 }
 
-interface WeeklyHours {
-  [projectId: string]: {
-    [day: string]: number;
-  };
-}
-
-interface LeaveStatus {
-  [day: string]: boolean;
+interface TimeEntry {
+  id: string;
+  projectId: string;
+  projectName: string;
+  day: string;
+  hours: number;
+  isLeave?: boolean;
+  leaveType?: 'half-day' | 'full-day';
 }
 
 const WeeklyTimesheet = () => {
@@ -34,12 +35,12 @@ const WeeklyTimesheet = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentWeek, setCurrentWeek] = useState(new Date());
-  const [weeklyHours, setWeeklyHours] = useState<WeeklyHours>({});
-  const [leaveStatus, setLeaveStatus] = useState<LeaveStatus>({});
+  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [comment, setComment] = useState("");
   const [showCalendar, setShowCalendar] = useState(false);
 
   const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']; // Working days only
 
   // Check if user is admin
   const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
@@ -88,7 +89,7 @@ const WeeklyTimesheet = () => {
   const getWeekStart = (date: Date) => {
     const d = new Date(date);
     const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is Sunday
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
     d.setDate(diff);
     return d;
   };
@@ -101,6 +102,11 @@ const WeeklyTimesheet = () => {
       date.setDate(weekStart.getDate() + index);
       return date;
     });
+  };
+
+  // Check if day is weekend
+  const isWeekend = (day: string) => {
+    return day === 'Sat' || day === 'Sun';
   };
 
   // Format date range
@@ -135,102 +141,97 @@ const WeeklyTimesheet = () => {
     }
   };
 
-  // Update hours for a project and day with 8-hour daily limit
-  const updateHours = (projectId: string, day: string, hours: string) => {
-    const numericHours = parseFloat(hours) || 0;
-    
-    // Calculate current total for the day excluding this project
-    const currentDayTotal = projects.reduce((total, project) => {
-      if (project.id === projectId) return total;
-      return total + (weeklyHours[project.id]?.[day] || 0);
-    }, 0);
-    
-    // Check if adding these hours would exceed 8 hours per day
-    const newTotal = currentDayTotal + numericHours;
-    if (newTotal > 8) {
+  // Add new time entry
+  const addTimeEntry = (projectId: string, day: string) => {
+    if (isWeekend(day)) {
       toast({
-        title: "Daily Limit Exceeded",
-        description: `Cannot exceed 8 hours per day. Current total: ${currentDayTotal.toFixed(1)} hours. Maximum you can add: ${(8 - currentDayTotal).toFixed(1)} hours.`,
+        title: "Weekend Entry Not Allowed",
+        description: "Cannot add entries for weekends",
         variant: "destructive"
       });
       return;
     }
-    
-    setWeeklyHours(prev => ({
-      ...prev,
-      [projectId]: {
-        ...prev[projectId],
-        [day]: numericHours
-      }
-    }));
+
+    const project = projects.find(p => p.id === projectId);
+    if (!project && projectId !== 'leave') return;
+
+    const newEntry: TimeEntry = {
+      id: `${projectId}-${day}-${Date.now()}`,
+      projectId,
+      projectName: project ? project.name : 'Leave',
+      day,
+      hours: 0,
+      isLeave: projectId === 'leave'
+    };
+
+    setTimeEntries(prev => [...prev, newEntry]);
   };
 
-  // Toggle leave status
-  const toggleLeave = (day: string) => {
-    const newLeaveStatus = !leaveStatus[day];
-    
-    setLeaveStatus(prev => ({
-      ...prev,
-      [day]: newLeaveStatus
-    }));
-
-    // If marking as leave, clear all hours for that day
-    if (newLeaveStatus) {
-      setWeeklyHours(prev => {
-        const updated = { ...prev };
-        projects.forEach(project => {
-          if (updated[project.id]) {
-            updated[project.id] = {
-              ...updated[project.id],
-              [day]: 0
-            };
-          }
-        });
-        return updated;
+  // Add leave entry
+  const addLeaveEntry = (day: string, leaveType: 'half-day' | 'full-day') => {
+    if (isWeekend(day)) {
+      toast({
+        title: "Weekend Entry Not Allowed",
+        description: "Cannot add entries for weekends",
+        variant: "destructive"
       });
+      return;
     }
+
+    const newEntry: TimeEntry = {
+      id: `leave-${day}-${Date.now()}`,
+      projectId: 'leave',
+      projectName: `Leave (${leaveType})`,
+      day,
+      hours: leaveType === 'full-day' ? 8 : 4,
+      isLeave: true,
+      leaveType
+    };
+
+    setTimeEntries(prev => [...prev, newEntry]);
+  };
+
+  // Update hours for an entry
+  const updateHours = (entryId: string, hours: string) => {
+    const numericHours = parseFloat(hours) || 0;
+    
+    setTimeEntries(prev => prev.map(entry => 
+      entry.id === entryId ? { ...entry, hours: numericHours } : entry
+    ));
+  };
+
+  // Remove time entry
+  const removeTimeEntry = (entryId: string) => {
+    setTimeEntries(prev => prev.filter(entry => entry.id !== entryId));
   };
 
   // Calculate daily totals
   const getDayTotal = (day: string) => {
-    return projects.reduce((total, project) => {
-      return total + (weeklyHours[project.id]?.[day] || 0);
-    }, 0);
+    return timeEntries
+      .filter(entry => entry.day === day)
+      .reduce((total, entry) => total + entry.hours, 0);
   };
 
-  // Calculate project totals
-  const getProjectTotal = (projectId: string) => {
-    return daysOfWeek.reduce((total, day) => {
-      return total + (weeklyHours[projectId]?.[day] || 0);
-    }, 0);
+  // Calculate weekly total
+  const getWeeklyTotal = () => {
+    return timeEntries.reduce((total, entry) => total + entry.hours, 0);
   };
 
-  // Calculate grand total
-  const getGrandTotal = () => {
-    return projects.reduce((total, project) => {
-      return total + getProjectTotal(project.id);
-    }, 0);
-  };
-
-  // Count leave days
-  const getLeaveCount = () => {
-    return Object.values(leaveStatus).filter(Boolean).length;
-  };
-
-  // Calculate adjusted weekly target based on holidays
+  // Get weekly target (40 hours for working days)
   const getWeeklyTarget = () => {
-    const leaveCount = getLeaveCount();
-    const baseTarget = 40;
-    const hoursPerDay = 8;
-    
-    // Only start reducing hours after 2 holidays
-    if (leaveCount <= 2) {
-      return baseTarget;
-    }
-    
-    // Reduce hours for holidays beyond the first 2
-    const excessHolidays = leaveCount - 2;
-    return Math.max(0, baseTarget - (excessHolidays * hoursPerDay));
+    return 40; // 5 working days * 8 hours
+  };
+
+  // Check if form can be submitted
+  const canSubmit = () => {
+    const weeklyTotal = getWeeklyTotal();
+    const target = getWeeklyTarget();
+    return weeklyTotal >= target;
+  };
+
+  // Get entries for a specific day
+  const getDayEntries = (day: string) => {
+    return timeEntries.filter(entry => entry.day === day);
   };
 
   // Handle save
@@ -243,6 +244,15 @@ const WeeklyTimesheet = () => {
 
   // Handle submit
   const handleSubmit = () => {
+    if (!canSubmit()) {
+      toast({
+        title: "Cannot Submit",
+        description: `Weekly target of ${getWeeklyTarget()} hours not met. Current total: ${getWeeklyTotal().toFixed(1)} hours`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     toast({
       title: "Submitted",
       description: "Timesheet submitted for approval"
@@ -277,9 +287,6 @@ const WeeklyTimesheet = () => {
         </div>
         <div className="flex items-center space-x-2 text-sm text-gray-600">
           <span>Welcome, {profile?.full_name || 'User'}</span>
-          <Button variant="ghost" size="sm">
-            Logout
-          </Button>
         </div>
       </div>
 
@@ -330,14 +337,14 @@ const WeeklyTimesheet = () => {
         <CardContent className="p-4">
           <div className="flex items-center justify-between text-sm">
             <div className="text-blue-700">
-              <span className="font-medium">Working Hours:</span> 8 hours per day
+              <span className="font-medium">Working Days:</span> Monday to Friday (Weekends are frozen)
             </div>
             <div className="text-blue-700">
               <span className="font-medium">Weekly Target:</span> {getWeeklyTarget()} hours
-              {getLeaveCount() > 0 && <span className="text-orange-600 ml-1">({getLeaveCount()} holiday{getLeaveCount() > 1 ? 's' : ''})</span>}
             </div>
             <div className="text-blue-700">
-              <span className="font-medium">Current Total:</span> {getGrandTotal().toFixed(2)} hours
+              <span className="font-medium">Current Total:</span> {getWeeklyTotal().toFixed(1)} hours
+              {!canSubmit() && <span className="text-red-600 ml-2">(Target not met)</span>}
             </div>
           </div>
         </CardContent>
@@ -361,126 +368,165 @@ const WeeklyTimesheet = () => {
         <>
           {/* Timesheet Grid */}
           <Card>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b bg-gray-50">
-                      <th className="text-left p-4 font-medium">PROJECTS/TASKS</th>
-                      {weekDates.map((date, index) => (
-                        <th key={index} className="text-center p-4 font-medium min-w-[120px]">
-                          <div>{daysOfWeek[index]}</div>
-                          <div className="text-sm text-gray-500 font-normal">
-                            {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            <CardContent className="p-6">
+              <div className="space-y-6">
+                {/* Add Entry Section */}
+                {!isAdmin && (
+                  <div className="border-b pb-4">
+                    <h3 className="text-lg font-medium mb-4">Add Time Entry</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {weekDays.map((day) => (
+                        <div key={day} className="space-y-2">
+                          <label className="text-sm font-medium">{day}</label>
+                          <div className="space-y-2">
+                            <Select onValueChange={(value) => {
+                              if (value.startsWith('leave-')) {
+                                const leaveType = value.split('-')[1] as 'half-day' | 'full-day';
+                                addLeaveEntry(day, leaveType);
+                              } else {
+                                addTimeEntry(value, day);
+                              }
+                            }}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select project/leave" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {projects.map((project) => (
+                                  <SelectItem key={project.id} value={project.id}>
+                                    {project.name}
+                                  </SelectItem>
+                                ))}
+                                <SelectItem value="leave-half-day">Leave (Half Day)</SelectItem>
+                                <SelectItem value="leave-full-day">Leave (Full Day)</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
-                        </th>
+                        </div>
                       ))}
-                      <th className="text-center p-4 font-medium">TOTAL</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {projects.map((project) => (
-                      <tr key={project.id} className="border-b">
-                        <td className="p-4 font-medium">{project.name}</td>
-                        {daysOfWeek.map((day) => (
-                          <td key={day} className="p-2">
-                            {isAdmin ? (
-                              <div className="text-center p-2 text-gray-400 italic">
-                                View Only
-                              </div>
-                            ) : (
-                              <Input
-                                type="number"
-                                step="0.5"
-                                min="0"
-                                max="8"
-                                value={weeklyHours[project.id]?.[day] || ''}
-                                onChange={(e) => updateHours(project.id, day, e.target.value)}
-                                className="text-center"
-                                placeholder="0.00"
-                                disabled={leaveStatus[day]}
-                              />
-                            )}
-                          </td>
-                        ))}
-                        <td className="p-4 text-center font-medium">
-                          {getProjectTotal(project.id).toFixed(2)}
-                        </td>
-                      </tr>
-                    ))}
-                    
-                    {/* Leave/Holiday Row */}
-                    {projects.length > 0 && (
-                      <tr className="border-b bg-orange-50">
-                        <td className="p-4 font-medium text-orange-600">Leave/Holiday</td>
-                        {daysOfWeek.map((day) => (
-                          <td key={day} className="p-4 text-center">
-                            {isAdmin ? (
-                              <div className="text-gray-400 italic">View Only</div>
-                            ) : (
-                              <Checkbox
-                                checked={leaveStatus[day] || false}
-                                onCheckedChange={() => toggleLeave(day)}
-                              />
-                            )}
-                          </td>
-                        ))}
-                        <td className="p-4 text-center font-medium text-orange-600">
-                          {getLeaveCount()} days
-                        </td>
-                      </tr>
-                    )}
+                    </div>
+                  </div>
+                )}
 
-                    {/* Total Hours Row */}
-                    {projects.length > 0 && (
+                {/* Entries Display */}
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b bg-gray-50">
+                        <th className="text-left p-4 font-medium">ENTRY</th>
+                        {daysOfWeek.map((day, index) => (
+                          <th key={index} className={`text-center p-4 font-medium min-w-[120px] ${isWeekend(day) ? 'bg-gray-200 text-gray-500' : ''}`}>
+                            <div>{day}</div>
+                            <div className="text-sm text-gray-500 font-normal">
+                              {weekDates[index].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            </div>
+                            {isWeekend(day) && <div className="text-xs text-gray-400">FROZEN</div>}
+                          </th>
+                        ))}
+                        <th className="text-center p-4 font-medium">ACTIONS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {daysOfWeek.map((day) => {
+                        const dayEntries = getDayEntries(day);
+                        return dayEntries.map((entry) => (
+                          <tr key={entry.id} className="border-b">
+                            <td className="p-4 font-medium">{entry.projectName}</td>
+                            {daysOfWeek.map((d) => (
+                              <td key={d} className={`p-2 ${isWeekend(d) ? 'bg-gray-100' : ''}`}>
+                                {d === day ? (
+                                  entry.isLeave ? (
+                                    <div className="text-center p-2 bg-orange-100 text-orange-700 rounded">
+                                      {entry.hours}h ({entry.leaveType})
+                                    </div>
+                                  ) : isAdmin ? (
+                                    <div className="text-center p-2 text-gray-400 italic">
+                                      View Only
+                                    </div>
+                                  ) : (
+                                    <Input
+                                      type="number"
+                                      step="0.5"
+                                      min="0"
+                                      value={entry.hours || ''}
+                                      onChange={(e) => updateHours(entry.id, e.target.value)}
+                                      className="text-center"
+                                      placeholder="0.00"
+                                    />
+                                  )
+                                ) : (
+                                  <div className={`text-center p-2 ${isWeekend(d) ? 'text-gray-400' : ''}`}>
+                                    {isWeekend(d) ? 'FROZEN' : '-'}
+                                  </div>
+                                )}
+                              </td>
+                            ))}
+                            <td className="p-4 text-center">
+                              {!isAdmin && (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={() => removeTimeEntry(entry.id)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        ));
+                      })}
+
+                      {/* Daily Totals Row */}
                       <tr className="border-b bg-gray-50 font-bold">
-                        <td className="p-4">TOTAL HOURS</td>
+                        <td className="p-4">DAILY TOTALS</td>
                         {daysOfWeek.map((day) => (
-                          <td key={day} className="p-4 text-center">
-                            {getDayTotal(day).toFixed(2)}
+                          <td key={day} className={`p-4 text-center ${isWeekend(day) ? 'bg-gray-200 text-gray-500' : ''}`}>
+                            {isWeekend(day) ? 'FROZEN' : getDayTotal(day).toFixed(1)}
                           </td>
                         ))}
                         <td className="p-4 text-center">
-                          {getGrandTotal().toFixed(2)}
+                          {getWeeklyTotal().toFixed(1)}h
                         </td>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Comment Section */}
-          {projects.length > 0 && (
-            <Card>
-              <CardContent className="p-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Comment:</label>
-                  <Textarea
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    placeholder="Please enter the comments"
-                    className="min-h-[100px]"
-                    maxLength={255}
-                    disabled={isAdmin}
-                  />
-                  <div className="text-right text-sm text-gray-500">
-                    {comment.length} / 255
-                  </div>
+          <Card>
+            <CardContent className="p-6">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Comment:</label>
+                <Textarea
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="Please enter the comments"
+                  className="min-h-[100px]"
+                  maxLength={255}
+                  disabled={isAdmin}
+                />
+                <div className="text-right text-sm text-gray-500">
+                  {comment.length} / 255
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              </div>
+            </CardContent>
+          </Card>
 
-          {/* Action Buttons - Only show for non-admin users with projects */}
-          {!isAdmin && projects.length > 0 && (
+          {/* Action Buttons - Only show for non-admin users */}
+          {!isAdmin && (
             <div className="flex justify-end space-x-4">
               <Button variant="outline" onClick={handleSave}>
                 Save
               </Button>
-              <Button onClick={handleSubmit}>
+              <Button 
+                onClick={handleSubmit}
+                disabled={!canSubmit()}
+                className={!canSubmit() ? 'opacity-50 cursor-not-allowed' : ''}
+              >
                 Submit
+                {!canSubmit() && ` (${(getWeeklyTarget() - getWeeklyTotal()).toFixed(1)}h needed)`}
               </Button>
             </div>
           )}
